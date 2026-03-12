@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VTT UI Theme Tester</title>
+  <link id="theme-stylesheet" rel="stylesheet" href="/themes/dark-fantasy.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      transition: background 0.3s, color 0.3s;
+    }
+
+    /* ── Toolbar ── */
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 16px;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+    }
+    .toolbar h1 {
+      font-family: var(--font-heading);
+      font-size: 16px;
+      color: var(--accent);
+      margin-right: auto;
+    }
+    .toolbar select, .toolbar button {
+      font-family: var(--font-body);
+      font-size: 13px;
+      padding: 6px 12px;
+      background: var(--bg-panel);
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      cursor: pointer;
+    }
+    .toolbar select:hover, .toolbar button:hover {
+      border-color: var(--border-accent);
+    }
+
+    /* ── Layout ── */
+    .layout {
+      display: grid;
+      grid-template-columns: 240px 1fr 280px;
+      grid-template-rows: 1fr 48px;
+      height: calc(100vh - 45px);
+    }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      background: var(--bg-secondary);
+      border-right: 1px solid var(--border);
+      padding: 12px;
+      overflow-y: auto;
+    }
+    .sidebar h2 {
+      font-family: var(--font-heading);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+    .sidebar-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px;
+      border-radius: var(--radius);
+      cursor: pointer;
+      color: var(--text-secondary);
+      font-size: 13px;
+      transition: background 0.15s;
+    }
+    .sidebar-item:hover { background: var(--bg-hover); color: var(--text-primary); }
+    .sidebar-item.active { background: var(--accent-dim); color: var(--accent); border: 1px solid var(--border-accent); }
+    .sidebar-item .dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--success);
+      flex-shrink: 0;
+    }
+    .sidebar-item .dot.offline { background: var(--text-muted); }
+
+    /* ── Canvas area ── */
+    .canvas-area {
+      background: var(--bg-primary);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+      padding: 24px;
+      position: relative;
+    }
+    .canvas-placeholder {
+      width: 100%;
+      max-width: 600px;
+      aspect-ratio: 16/10;
+      background: var(--bg-secondary);
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+
+    /* ── Component showcase below canvas ── */
+    .components {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .btn {
+      padding: 8px 20px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      font-size: 13px;
+      font-family: var(--font-body);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn-primary {
+      background: var(--accent);
+      color: var(--bg-primary);
+      border-color: var(--accent);
+    }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-secondary {
+      background: var(--bg-panel);
+      color: var(--text-primary);
+    }
+    .btn-secondary:hover { background: var(--bg-hover); border-color: var(--border-accent); }
+    .btn-danger {
+      background: transparent;
+      color: var(--danger);
+      border-color: var(--danger);
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      font-size: 11px;
+      border-radius: 99px;
+      background: var(--accent-dim);
+      color: var(--accent);
+      border: 1px solid var(--border-accent);
+    }
+
+    .input-field {
+      padding: 8px 12px;
+      background: var(--bg-panel);
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-family: var(--font-body);
+      font-size: 13px;
+      width: 200px;
+    }
+    .input-field:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px var(--accent-dim);
+    }
+
+    /* ── Right panel ── */
+    .right-panel {
+      background: var(--bg-secondary);
+      border-left: 1px solid var(--border);
+      padding: 12px;
+      overflow-y: auto;
+    }
+    .right-panel h2 {
+      font-family: var(--font-heading);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+    .chat-message {
+      margin-bottom: 12px;
+      padding: 8px 12px;
+      background: var(--bg-panel);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+    }
+    .chat-message .sender {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--accent);
+      margin-bottom: 4px;
+    }
+    .chat-message .text {
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.4;
+    }
+    .chat-input-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .chat-input-row input {
+      flex: 1;
+      padding: 8px;
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text-primary);
+      font-size: 13px;
+    }
+
+    /* ── Bottom bar ── */
+    .bottom-bar {
+      grid-column: 1 / -1;
+      background: var(--bg-secondary);
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      gap: 16px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    .bottom-bar .indicator {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--success);
+      display: inline-block;
+      margin-right: 4px;
+    }
+
+    /* ── Variable inspector ── */
+    .var-inspector {
+      margin-top: 16px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+    }
+    .var-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 4px 0;
+      font-size: 11px;
+    }
+    .var-row .var-name { color: var(--text-muted); font-family: monospace; }
+    .var-row .var-swatch {
+      width: 16px; height: 16px;
+      border-radius: 3px;
+      border: 1px solid var(--border);
+    }
+  </style>
+</head>
+<body>
+
+<div class="toolbar">
+  <h1>⚔ VTT Theme Lab</h1>
+  <select id="theme-select"></select>
+  <button onclick="exportVars()">Export CSS Vars</button>
+</div>
+
+<div class="layout">
+  <!-- Left sidebar: scenes / players -->
+  <div class="sidebar">
+    <h2>Scenes</h2>
+    <div class="sidebar-item active">🗺️ Tavern Interior</div>
+    <div class="sidebar-item">🌲 Forest Clearing</div>
+    <div class="sidebar-item">🏰 Castle Approach</div>
+    <div class="sidebar-item">⚔️ Dragon's Lair</div>
+
+    <h2 style="margin-top: 16px;">Players</h2>
+    <div class="sidebar-item"><span class="dot"></span> Kael (Fighter)</div>
+    <div class="sidebar-item"><span class="dot"></span> Lyra (Wizard)</div>
+    <div class="sidebar-item"><span class="dot offline"></span> Grom (Barbarian)</div>
+    <div class="sidebar-item"><span class="dot"></span> Pip (Rogue)</div>
+  </div>
+
+  <!-- Center: canvas + component showcase -->
+  <div class="canvas-area">
+    <div class="canvas-placeholder">
+      Map canvas area — grid, tokens, fog of war
+    </div>
+    <div class="components">
+      <button class="btn btn-primary">Roll Initiative</button>
+      <button class="btn btn-secondary">Add Token</button>
+      <button class="btn btn-danger">End Session</button>
+      <span class="badge">Round 3</span>
+      <input class="input-field" placeholder="Search spells...">
+    </div>
+  </div>
+
+  <!-- Right panel: chat -->
+  <div class="right-panel">
+    <h2>Game Chat</h2>
+    <div class="chat-message">
+      <div class="sender">Kael</div>
+      <div class="text">I move to the door and listen for sounds.</div>
+    </div>
+    <div class="chat-message">
+      <div class="sender">GM</div>
+      <div class="text">Roll Perception. DC 14.</div>
+    </div>
+    <div class="chat-message">
+      <div class="sender">Kael</div>
+      <div class="text">🎲 Perception: 17 (12 + 5)</div>
+    </div>
+    <div class="chat-message">
+      <div class="sender">GM</div>
+      <div class="text">You hear muffled voices and the clink of coins beyond the door.</div>
+    </div>
+    <div class="chat-input-row">
+      <input placeholder="Type a message...">
+      <button class="btn btn-primary" style="padding: 6px 12px;">Send</button>
+    </div>
+
+    <!-- Variable inspector -->
+    <div class="var-inspector" id="var-inspector">
+      <h2>CSS Variables</h2>
+    </div>
+  </div>
+
+  <!-- Bottom bar -->
+  <div class="bottom-bar">
+    <span><span class="indicator"></span> Connected</span>
+    <span>3 / 4 players online</span>
+    <span style="margin-left: auto;">Grid: 5ft | Zoom: 100%</span>
+  </div>
+</div>
+
+<script>
+  const themeSelect = document.getElementById('theme-select');
+  const themeLink = document.getElementById('theme-stylesheet');
+
+  // Load themes from server
+  fetch('/api/themes')
+    .then(r => r.json())
+    .then(themes => {
+      themes.forEach(t => {
+        const opt = document.createElement('option');
+        opt.value = t.file;
+        opt.textContent = t.name;
+        themeSelect.appendChild(opt);
+      });
+    });
+
+  themeSelect.addEventListener('change', () => {
+    themeLink.href = themeSelect.value;
+    // Wait for stylesheet to load, then refresh inspector
+    setTimeout(renderVarInspector, 100);
+  });
+
+  function renderVarInspector() {
+    const inspector = document.getElementById('var-inspector');
+    const vars = [
+      '--bg-primary', '--bg-secondary', '--bg-panel', '--bg-hover',
+      '--border', '--border-accent',
+      '--text-primary', '--text-secondary', '--text-muted',
+      '--accent', '--accent-hover', '--accent-dim',
+      '--danger', '--success'
+    ];
+    const style = getComputedStyle(document.documentElement);
+    inspector.innerHTML = '<h2>CSS Variables</h2>';
+    vars.forEach(v => {
+      const val = style.getPropertyValue(v).trim();
+      const row = document.createElement('div');
+      row.className = 'var-row';
+      row.innerHTML = `
+        <span class="var-name">${v}</span>
+        <span class="var-swatch" style="background: ${val};" title="${val}"></span>
+      `;
+      inspector.appendChild(row);
+    });
+  }
+
+  function exportVars() {
+    const style = getComputedStyle(document.documentElement);
+    const vars = Array.from(document.querySelectorAll('.var-row .var-name'))
+      .map(el => el.textContent);
+    const css = ':root {\n' + vars.map(v =>
+      `  ${v}: ${style.getPropertyValue(v).trim()};`
+    ).join('\n') + '\n}';
+    navigator.clipboard.writeText(css).then(() => alert('CSS copied to clipboard!'));
+  }
+
+  // Initial render
+  setTimeout(renderVarInspector, 200);
+</script>
+</body>
+</html>

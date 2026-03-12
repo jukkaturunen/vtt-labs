@@ -1,0 +1,10 @@
+{
+  "name": "@vtt-labs/shared",
+  "type": "module",
+  "exports": {
+    "./server": "./server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.0"
+  }
+}

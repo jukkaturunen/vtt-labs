@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VTT Audio Mixer</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #0d0d0f;
+      color: #e8e4da;
+      min-height: 100vh;
+      padding: 16px;
+    }
+    h1 { font-size: 20px; color: #c9a84c; margin-bottom: 16px; }
+    h2 { font-size: 14px; color: #9a9689; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+
+    .layout { display: grid; grid-template-columns: 300px 1fr; gap: 16px; height: calc(100vh - 80px); }
+
+    /* ── File Library ── */
+    .library {
+      background: #1a1a1f;
+      border: 1px solid #2a2a33;
+      border-radius: 6px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+    }
+    .drop-zone {
+      border: 2px dashed #2a2a33;
+      border-radius: 6px;
+      padding: 24px 12px;
+      text-align: center;
+      color: #5e5b53;
+      font-size: 13px;
+      cursor: pointer;
+      margin-bottom: 12px;
+      transition: border-color 0.2s;
+    }
+    .drop-zone.dragover { border-color: #c9a84c; color: #c9a84c; }
+    .drop-zone input { display: none; }
+    .file-list { flex: 1; overflow-y: auto; }
+    .file-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px;
+      border-radius: 4px;
+      cursor: grab;
+      font-size: 13px;
+      color: #9a9689;
+      transition: background 0.15s;
+    }
+    .file-item:hover { background: #22222a; color: #e8e4da; }
+    .file-item .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .file-item .size { font-size: 11px; color: #5e5b53; }
+    .file-item .remove { color: #b44040; cursor: pointer; opacity: 0.6; }
+    .file-item .remove:hover { opacity: 1; }
+
+    /* ── Mixer area ── */
+    .mixer-area { display: flex; flex-direction: column; gap: 16px; }
+
+    /* Mixer channels */
+    .channels {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .channel {
+      background: #1a1a1f;
+      border: 1px solid #2a2a33;
+      border-radius: 6px;
+      padding: 12px;
+      width: 200px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .channel.playing { border-color: #c9a84c; }
+    .channel .ch-name {
+      font-size: 13px;
+      font-weight: 600;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .channel .controls { display: flex; gap: 6px; align-items: center; }
+    .channel button {
+      background: #141418;
+      border: 1px solid #2a2a33;
+      color: #e8e4da;
+      padding: 4px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .channel button:hover { border-color: #c9a84c; }
+    .channel button.active { background: #c9a84c; color: #0d0d0f; }
+
+    /* Sliders */
+    .slider-row { display: flex; align-items: center; gap: 8px; }
+    .slider-row label { font-size: 11px; color: #5e5b53; width: 40px; }
+    .slider-row input[type="range"] {
+      flex: 1;
+      -webkit-appearance: none;
+      appearance: none;
+      height: 4px;
+      background: #2a2a33;
+      border-radius: 2px;
+      outline: none;
+    }
+    .slider-row input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px; height: 14px;
+      background: #c9a84c;
+      border-radius: 50%;
+      cursor: pointer;
+    }
+    .slider-row .val { font-size: 11px; color: #9a9689; width: 32px; text-align: right; }
+
+    /* Playlist */
+    .playlist-section {
+      background: #1a1a1f;
+      border: 1px solid #2a2a33;
+      border-radius: 6px;
+      padding: 12px;
+      flex: 1;
+      overflow-y: auto;
+    }
+    .playlist-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 8px;
+      border-radius: 4px;
+      font-size: 13px;
+      color: #9a9689;
+      cursor: pointer;
+    }
+    .playlist-item:hover { background: #22222a; }
+    .playlist-item.current { color: #c9a84c; background: rgba(201,168,76,0.1); }
+    .playlist-item .idx { width: 20px; color: #5e5b53; font-size: 11px; }
+
+    .empty-state { color: #5e5b53; font-size: 13px; padding: 20px; text-align: center; }
+
+    .master-controls {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      background: #1a1a1f;
+      border: 1px solid #2a2a33;
+      border-radius: 6px;
+      padding: 12px;
+    }
+    .master-controls h2 { margin: 0; }
+  </style>
+</head>
+<body>
+
+<h1>🎵 VTT Audio Mixer</h1>
+
+<div class="layout">
+  <!-- File Library -->
+  <div class="library">
+    <h2>Audio Library</h2>
+    <div class="drop-zone" id="drop-zone">
+      <div>Drop audio files here<br>or click to upload</div>
+      <input type="file" id="file-input" multiple accept="audio/*">
+    </div>
+    <div class="file-list" id="file-list"></div>
+  </div>
+
+  <!-- Mixer area -->
+  <div class="mixer-area">
+    <div class="master-controls">
+      <h2>Master</h2>
+      <div class="slider-row" style="flex:1">
+        <label>Vol</label>
+        <input type="range" id="master-vol" min="0" max="100" value="80">
+        <span class="val" id="master-vol-val">80%</span>
+      </div>
+      <button onclick="stopAll()" style="background:#141418;border:1px solid #2a2a33;color:#e8e4da;padding:6px 14px;border-radius:4px;cursor:pointer;">⏹ Stop All</button>
+    </div>
+
+    <h2>Mixer Channels</h2>
+    <div class="channels" id="channels">
+      <div class="empty-state">Double-click files in the library to add them as mixer channels</div>
+    </div>
+
+    <h2>Playlist</h2>
+    <div class="playlist-section" id="playlist">
+      <div class="empty-state">Drag files here to build a playlist (sequential playback)</div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ── Audio Context ──
+  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  const masterGain = audioCtx.createGain();
+  masterGain.connect(audioCtx.destination);
+  masterGain.gain.value = 0.8;
+
+  let files = [];
+  let channels = []; // { id, name, url, audio, gainNode, playing, loop, volume, pan }
+  let playlist = []; // { id, name, url }
+  let playlistCurrent = -1;
+
+  // ── File Upload ──
+  const dropZone = document.getElementById('drop-zone');
+  const fileInput = document.getElementById('file-input');
+
+  dropZone.addEventListener('click', () => fileInput.click());
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('dragover');
+    uploadFiles(e.dataTransfer.files);
+  });
+  fileInput.addEventListener('change', () => uploadFiles(fileInput.files));
+
+  async function uploadFiles(fileList) {
+    const fd = new FormData();
+    for (const f of fileList) fd.append('files', f);
+    const res = await fetch('/api/upload', { method: 'POST', body: fd });
+    const uploaded = await res.json();
+    files.push(...uploaded);
+    renderFileList();
+  }
+
+  async function loadFiles() {
+    const res = await fetch('/api/files');
+    files = await res.json();
+    renderFileList();
+  }
+
+  function renderFileList() {
+    const list = document.getElementById('file-list');
+    list.innerHTML = files.map(f => `
+      <div class="file-item" draggable="true"
+           ondblclick="addChannel('${f.id}', '${f.name.replace(/'/g, "\\'")}', '${f.url}')"
+           ondragstart="event.dataTransfer.setData('application/json', JSON.stringify(${JSON.stringify(f).replace(/"/g, '&quot;')}))">
+        <span class="name" title="${f.name}">🎵 ${f.name}</span>
+        <span class="size">${(f.size / 1024 / 1024).toFixed(1)}MB</span>
+        <span class="remove" onclick="removeFile('${f.id}')">&times;</span>
+      </div>
+    `).join('');
+  }
+
+  async function removeFile(id) {
+    await fetch(`/api/files/${id}`, { method: 'DELETE' });
+    files = files.filter(f => f.id !== id);
+    renderFileList();
+  }
+
+  // ── Mixer Channels ──
+  function addChannel(id, name, url) {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const audio = new Audio(url);
+    audio.crossOrigin = 'anonymous';
+    const source = audioCtx.createMediaElementSource(audio);
+    const gainNode = audioCtx.createGain();
+    const panNode = audioCtx.createStereoPanner();
+    source.connect(gainNode).connect(panNode).connect(masterGain);
+
+    const ch = { id: Date.now().toString(), fileId: id, name, url, audio, gainNode, panNode, playing: false, loop: false, volume: 80 };
+    channels.push(ch);
+
+    audio.addEventListener('ended', () => {
+      if (!ch.loop) {
+        ch.playing = false;
+        renderChannels();
+      }
+    });
+
+    renderChannels();
+  }
+
+  function renderChannels() {
+    const container = document.getElementById('channels');
+    if (channels.length === 0) {
+      container.innerHTML = '<div class="empty-state">Double-click files in the library to add them as mixer channels</div>';
+      return;
+    }
+    container.innerHTML = channels.map((ch, i) => `
+      <div class="channel ${ch.playing ? 'playing' : ''}">
+        <div class="ch-name" title="${ch.name}">${ch.name}</div>
+        <div class="controls">
+          <button onclick="togglePlay(${i})">${ch.playing ? '⏸' : '▶'}</button>
+          <button class="${ch.loop ? 'active' : ''}" onclick="toggleLoop(${i})">🔁</button>
+          <button onclick="removeChannel(${i})">✕</button>
+        </div>
+        <div class="slider-row">
+          <label>Vol</label>
+          <input type="range" min="0" max="100" value="${ch.volume}" oninput="setVolume(${i}, this.value)">
+          <span class="val">${ch.volume}%</span>
+        </div>
+        <div class="slider-row">
+          <label>Pan</label>
+          <input type="range" min="-100" max="100" value="${Math.round(ch.panNode.pan.value * 100)}" oninput="setPan(${i}, this.value)">
+          <span class="val">${Math.round(ch.panNode.pan.value * 100)}</span>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function togglePlay(i) {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const ch = channels[i];
+    if (ch.playing) {
+      ch.audio.pause();
+      ch.playing = false;
+    } else {
+      ch.audio.loop = ch.loop;
+      ch.audio.play();
+      ch.playing = true;
+    }
+    renderChannels();
+  }
+
+  function toggleLoop(i) {
+    channels[i].loop = !channels[i].loop;
+    channels[i].audio.loop = channels[i].loop;
+    renderChannels();
+  }
+
+  function setVolume(i, val) {
+    channels[i].volume = parseInt(val);
+    channels[i].gainNode.gain.value = val / 100;
+  }
+
+  function setPan(i, val) {
+    channels[i].panNode.pan.value = val / 100;
+  }
+
+  function removeChannel(i) {
+    channels[i].audio.pause();
+    channels.splice(i, 1);
+    renderChannels();
+  }
+
+  function stopAll() {
+    channels.forEach(ch => { ch.audio.pause(); ch.audio.currentTime = 0; ch.playing = false; });
+    renderChannels();
+  }
+
+  // ── Master Volume ──
+  document.getElementById('master-vol').addEventListener('input', e => {
+    masterGain.gain.value = e.target.value / 100;
+    document.getElementById('master-vol-val').textContent = e.target.value + '%';
+  });
+
+  // ── Playlist (simple sequential) ──
+  const playlistEl = document.getElementById('playlist');
+  playlistEl.addEventListener('dragover', e => e.preventDefault());
+  playlistEl.addEventListener('drop', e => {
+    e.preventDefault();
+    try {
+      const file = JSON.parse(e.dataTransfer.getData('application/json'));
+      playlist.push({ id: file.id, name: file.name, url: file.url });
+      renderPlaylist();
+    } catch {}
+  });
+
+  function renderPlaylist() {
+    if (playlist.length === 0) {
+      playlistEl.innerHTML = '<div class="empty-state">Drag files here to build a playlist</div>';
+      return;
+    }
+    playlistEl.innerHTML = playlist.map((item, i) => `
+      <div class="playlist-item ${i === playlistCurrent ? 'current' : ''}" onclick="playPlaylistItem(${i})">
+        <span class="idx">${i + 1}</span>
+        <span class="name">🎵 ${item.name}</span>
+      </div>
+    `).join('');
+  }
+
+  function playPlaylistItem(i) {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    playlistCurrent = i;
+    addChannel(playlist[i].id, playlist[i].name, playlist[i].url);
+    const lastCh = channels[channels.length - 1];
+    lastCh.audio.play();
+    lastCh.playing = true;
+    lastCh.audio.addEventListener('ended', () => {
+      if (playlistCurrent < playlist.length - 1) {
+        playPlaylistItem(playlistCurrent + 1);
+      }
+    });
+    renderPlaylist();
+    renderChannels();
+  }
+
+  // Init
+  loadFiles();
+</script>
+</body>
+</html>

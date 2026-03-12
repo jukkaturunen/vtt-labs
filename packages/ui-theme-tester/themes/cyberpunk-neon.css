@@ -1,0 +1,21 @@
+/* Cyberpunk Neon — dark with electric accents */
+:root {
+  --bg-primary: #0a0a12;
+  --bg-secondary: #12121e;
+  --bg-panel: #0f0f1a;
+  --bg-hover: #1a1a2e;
+  --border: #1e1e35;
+  --border-accent: #00f0ff;
+  --text-primary: #e0e0ff;
+  --text-secondary: #8888aa;
+  --text-muted: #555570;
+  --accent: #00f0ff;
+  --accent-hover: #33f5ff;
+  --accent-dim: rgba(0, 240, 255, 0.1);
+  --danger: #ff2060;
+  --success: #00ff88;
+  --radius: 2px;
+  --font-body: 'Courier New', monospace;
+  --font-heading: 'Courier New', monospace;
+  --shadow: 0 0 15px rgba(0, 240, 255, 0.15);
+}

@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VTT Scene Visualizer</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #0d0d0f;
+      color: #e8e4da;
+      min-height: 100vh;
+      padding: 16px;
+    }
+    h1 { font-size: 20px; color: #c9a84c; margin-bottom: 4px; }
+    .subtitle { font-size: 13px; color: #5e5b53; margin-bottom: 20px; }
+    h2 { font-size: 13px; color: #9a9689; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+
+    .layout { display: grid; grid-template-columns: 380px 1fr; gap: 16px; height: calc(100vh - 80px); }
+
+    /* ── Left Panel: Prompt Builder ── */
+    .left-panel {
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding-right: 8px;
+    }
+    .left-panel::-webkit-scrollbar { width: 6px; }
+    .left-panel::-webkit-scrollbar-track { background: transparent; }
+    .left-panel::-webkit-scrollbar-thumb { background: #2a2a33; border-radius: 3px; }
+
+    .panel {
+      background: #1a1a1f;
+      border: 1px solid #2a2a33;
+      border-radius: 6px;
+      padding: 12px;
+    }
+
+    /* Prompt sections */
+    .prompt-section {
+      margin-bottom: 12px;
+    }
+    .prompt-section:last-child { margin-bottom: 0; }
+    .prompt-section-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #9a9689;
+      margin-bottom: 4px;
+    }
+    .prompt-section select {
+      width: 100%;
+      padding: 7px 10px;
+      background: #141418;
+      border: 1px solid #2a2a33;
+      border-radius: 4px;
+      color: #e8e4da;
+      font-family: inherit;
+      font-size: 13px;
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235e5b53' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+    }
+    .prompt-section select:focus { outline: none; border-color: #c9a84c; }
+    .prompt-section select:hover { border-color: #3a3a43; }
+
+    .fragment-preview {
+      font-size: 11px;
+      color: #5e5b53;
+      margin-top: 4px;
+      padding: 4px 8px;
+      background: #111114;
+      border-radius: 3px;
+      font-style: italic;
+      line-height: 1.4;
+      display: none;
+    }
+    .fragment-preview.visible { display: block; }
+
+    .image-placeholder {
+      width: 100%;
+      height: 48px;
+      background: #111114;
+      border: 1px dashed #2a2a33;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 6px;
+      color: #2a2a33;
+      font-size: 18px;
+    }
+
+    /* ── Right Panel ── */
+    .right-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      overflow-y: auto;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 100px;
+      padding: 10px;
+      background: #141418;
+      border: 1px solid #2a2a33;
+      border-radius: 4px;
+      color: #e8e4da;
+      font-family: inherit;
+      font-size: 13px;
+      resize: vertical;
+    }
+    textarea:focus { outline: none; border-color: #c9a84c; }
+    textarea::placeholder { color: #5e5b53; }
+
+    /* Style prompt */
+    .style-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+    .style-header h2 { margin-bottom: 0; }
+    .style-custom-badge {
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 3px;
+      background: rgba(180, 120, 220, 0.15);
+      color: #b478dc;
+      border: 1px solid rgba(180, 120, 220, 0.3);
+      display: none;
+    }
+    .style-custom-badge.visible { display: inline-block; }
+    .style-reset-btn {
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 3px;
+      background: none;
+      color: #5e5b53;
+      border: 1px solid #2a2a33;
+      cursor: pointer;
+      display: none;
+    }
+    .style-reset-btn.visible { display: inline-block; }
+    .style-reset-btn:hover { color: #c9a84c; border-color: #c9a84c; }
+    #style-prompt {
+      min-height: 70px;
+    }
+    #style-prompt.customized {
+      border-color: rgba(180, 120, 220, 0.4);
+    }
+    .prompt-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+    .prompt-tag {
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 3px;
+      background: rgba(201, 168, 76, 0.12);
+      color: #c9a84c;
+      border: 1px solid rgba(201, 168, 76, 0.25);
+    }
+
+    /* Model / Quality selectors */
+    .model-quality-row {
+      display: flex;
+      gap: 8px;
+      align-items: end;
+    }
+    .model-quality-row .mq-group { flex: 1; }
+    .model-quality-row .mq-group label {
+      display: block;
+      font-size: 11px;
+      color: #5e5b53;
+      margin-bottom: 3px;
+    }
+    .model-quality-row select {
+      width: 100%;
+      padding: 6px 8px;
+      background: #141418;
+      border: 1px solid #2a2a33;
+      border-radius: 4px;
+      color: #e8e4da;
+      font-family: inherit;
+      font-size: 12px;
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235e5b53' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 8px center;
+    }
+    .model-quality-row select:focus { outline: none; border-color: #c9a84c; }
+
+    .generate-btn {
+      width: 100%;
+      padding: 12px;
+      background: #c9a84c;
+      color: #0d0d0f;
+      border: none;
+      border-radius: 4px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .generate-btn:hover { background: #dbb85a; }
+    .generate-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .error-msg { color: #b44040; font-size: 13px; margin-top: 8px; }
+
+    /* Result display */
+    .result-display {
+      background: #1a1a1f;
+      border: 1px solid #2a2a33;
+      border-radius: 6px;
+      min-height: 400px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      position: relative;
+    }
+    .result-display img {
+      max-width: 100%;
+      max-height: 70vh;
+      object-fit: contain;
+    }
+    .result-display .placeholder { color: #5e5b53; font-size: 14px; }
+    .result-display .loading { color: #c9a84c; font-size: 14px; }
+    .result-display .loading::after { content: ''; animation: dots 1.5s infinite; }
+    @keyframes dots {
+      0%, 20% { content: ''; }
+      40% { content: '.'; }
+      60% { content: '..'; }
+      80%, 100% { content: '...'; }
+    }
+    .result-overlay-bar {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      display: flex;
+      gap: 6px;
+      padding: 6px 10px;
+      background: rgba(20, 20, 24, 0.9);
+      border-radius: 0 0 6px 6px;
+    }
+    .result-overlay-bar button {
+      padding: 4px 10px;
+      font-size: 11px;
+      border: 1px solid #2a2a33;
+      border-radius: 3px;
+      background: #1a1a1f;
+      color: #9a9689;
+      cursor: pointer;
+    }
+    .result-overlay-bar button:hover { border-color: #c9a84c; color: #c9a84c; }
+
+    .prompt-info-panel {
+      position: absolute;
+      bottom: 36px; left: 0; right: 0;
+      background: rgba(20, 20, 24, 0.95);
+      padding: 12px;
+      max-height: 260px;
+      overflow-y: auto;
+      display: none;
+      border-top: 1px solid #2a2a33;
+    }
+    .prompt-info-panel.visible { display: block; }
+    .prompt-info-panel .prompt-tags { margin-bottom: 8px; }
+    .prompt-info-panel .info-label {
+      font-size: 10px;
+      color: #5e5b53;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 4px;
+      margin-top: 8px;
+    }
+    .prompt-info-panel .info-label:first-child { margin-top: 0; }
+    .prompt-info-panel .info-text {
+      font-size: 12px;
+      color: #e8e4da;
+      line-height: 1.5;
+      word-break: break-word;
+    }
+    .prompt-info-panel .info-text.muted { color: #7a7768; }
+
+    /* Gallery */
+    .gallery { display: flex; gap: 8px; flex-wrap: wrap; }
+    .gallery-thumb {
+      width: 100px; height: 100px;
+      border-radius: 4px;
+      object-fit: cover;
+      border: 1px solid #2a2a33;
+      cursor: pointer;
+      transition: border-color 0.15s;
+    }
+    .gallery-thumb:hover { border-color: #c9a84c; }
+
+    /* Reference images */
+    .ref-drop {
+      border: 2px dashed #2a2a33;
+      border-radius: 6px;
+      padding: 16px;
+      text-align: center;
+      color: #5e5b53;
+      font-size: 12px;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+    .ref-drop.dragover { border-color: #c9a84c; }
+    .ref-drop input { display: none; }
+    .ref-thumbnails { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+    .ref-thumb {
+      width: 60px; height: 60px;
+      border-radius: 4px;
+      object-fit: cover;
+      border: 1px solid #2a2a33;
+    }
+
+    /* Confirm dialog */
+    .dialog-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    .dialog-box {
+      background: #1a1a1f;
+      border: 1px solid #2a2a33;
+      border-radius: 8px;
+      padding: 20px;
+      max-width: 360px;
+      width: 90%;
+    }
+    .dialog-box p {
+      font-size: 13px;
+      color: #e8e4da;
+      margin-bottom: 16px;
+      line-height: 1.5;
+    }
+    .dialog-buttons {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+    .dialog-buttons button {
+      padding: 6px 14px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid #2a2a33;
+    }
+    .dialog-btn-cancel {
+      background: #141418;
+      color: #9a9689;
+    }
+    .dialog-btn-cancel:hover { border-color: #5e5b53; }
+    .dialog-btn-confirm {
+      background: #c9a84c;
+      color: #0d0d0f;
+      border-color: #c9a84c;
+    }
+    .dialog-btn-confirm:hover { background: #dbb85a; }
+  </style>
+</head>
+<body>
+
+<h1>VTT Scene Visualizer</h1>
+<p class="subtitle">Multi-dimensional prompt builder for AI scene generation</p>
+
+<div class="layout">
+  <!-- Left: Prompt Builder -->
+  <div class="left-panel">
+    <div class="panel">
+      <h2>Prompt Builder</h2>
+      <div id="prompt-sections"></div>
+    </div>
+
+    <!-- Reference Images -->
+    <div class="panel">
+      <h2>Reference Images</h2>
+      <div class="ref-drop" id="ref-drop">
+        Drop reference images here<br>or click to upload
+        <input type="file" id="ref-input" multiple accept="image/*">
+      </div>
+      <div class="ref-thumbnails" id="ref-thumbnails"></div>
+    </div>
+  </div>
+
+  <!-- Right: Generation Area -->
+  <div class="right-panel">
+    <!-- Scene Description -->
+    <div class="panel">
+      <h2>Scene Description</h2>
+      <textarea id="prompt" placeholder="Describe the scene you want to generate...&#10;e.g. 'A misty graveyard at midnight with a crumbling mausoleum'"></textarea>
+    </div>
+
+    <!-- Style Prompt -->
+    <div class="panel">
+      <div class="style-header">
+        <h2>Style</h2>
+        <div>
+          <span class="style-custom-badge" id="style-custom-badge">customized</span>
+          <button class="style-reset-btn" id="style-reset-btn" onclick="resetStylePrompt()">reset</button>
+        </div>
+      </div>
+      <div class="prompt-tags" id="style-tags"></div>
+      <textarea id="style-prompt" placeholder="Select style options from the left panel, or type style instructions directly..."></textarea>
+    </div>
+
+    <div class="panel">
+      <div class="model-quality-row">
+        <div class="mq-group">
+          <label>Model</label>
+          <select id="model-select"></select>
+        </div>
+        <div class="mq-group" id="quality-group">
+          <label>Quality</label>
+          <select id="quality-select"></select>
+        </div>
+      </div>
+    </div>
+
+    <button class="generate-btn" id="gen-btn" onclick="generate()">Generate Scene</button>
+    <div class="error-msg" id="error"></div>
+
+    <div class="result-display" id="result-display">
+      <div class="placeholder">Generated scene will appear here</div>
+    </div>
+
+    <div class="panel">
+      <h2>Generated Gallery</h2>
+      <div class="gallery" id="gallery"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  let promptOptions = {};
+  let categoryOrder = [];
+  let currentSelections = {};
+  let references = [];
+  let galleryData = [];
+  let availableModels = [];
+  let generatedStyleText = ''; // auto-assembled from dropdowns
+  let customStyle = false;     // true if user has manually edited the style textarea
+
+  // ── Load prompt options and models ──
+  fetch('/api/prompt-options').then(r => r.json()).then(data => {
+    promptOptions = data.categories;
+    categoryOrder = data.order;
+    buildPromptSections();
+  });
+
+  fetch('/api/models').then(r => r.json()).then(models => {
+    availableModels = models;
+    const modelSel = document.getElementById('model-select');
+    modelSel.innerHTML = models.map(m => `<option value="${m.id}">${m.label}</option>`).join('');
+    modelSel.addEventListener('change', () => updateQualityOptions());
+    updateQualityOptions();
+  });
+
+  function updateQualityOptions() {
+    const modelId = document.getElementById('model-select').value;
+    const model = availableModels.find(m => m.id === modelId);
+    const qualSel = document.getElementById('quality-select');
+    const qualGroup = document.getElementById('quality-group');
+
+    if (!model || model.qualities.length === 0) {
+      qualGroup.style.display = 'none';
+      qualSel.innerHTML = '';
+    } else {
+      qualGroup.style.display = '';
+      qualSel.innerHTML = model.qualities.map(q =>
+        `<option value="${q}"${q === model.defaultQuality ? ' selected' : ''}>${q.charAt(0).toUpperCase() + q.slice(1)}</option>`
+      ).join('');
+    }
+  }
+
+  function buildPromptSections() {
+    const container = document.getElementById('prompt-sections');
+    container.innerHTML = '';
+
+    for (const catKey of categoryOrder) {
+      const cat = promptOptions[catKey];
+      if (!cat) continue;
+
+      const section = document.createElement('div');
+      section.className = 'prompt-section';
+
+      const label = document.createElement('div');
+      label.className = 'prompt-section-label';
+      label.textContent = cat.label;
+
+      const select = document.createElement('select');
+      select.id = `select-${catKey}`;
+      select.innerHTML = `<option value="">None</option>` +
+        cat.options.map(o => `<option value="${o.id}">${o.label}</option>`).join('');
+      select.addEventListener('change', () => {
+        const prevValue = currentSelections[catKey];
+        currentSelections[catKey] = select.value || null;
+        updateFragmentPreview(catKey);
+
+        if (customStyle) {
+          showConfirmDialog('Do you want to override your custom style?', () => {
+            // Yes — reset custom flag and apply new generated style
+            setCustomStyle(false);
+            updateStylePrompt();
+          }, () => {
+            // No — revert dropdown but keep custom style, still update tags
+            currentSelections[catKey] = prevValue;
+            select.value = prevValue || '';
+            updateFragmentPreview(catKey);
+            updateStyleTags();
+          });
+        } else {
+          updateStylePrompt();
+        }
+      });
+
+      const fragment = document.createElement('div');
+      fragment.className = 'fragment-preview';
+      fragment.id = `fragment-${catKey}`;
+
+      const placeholder = document.createElement('div');
+      placeholder.className = 'image-placeholder';
+      placeholder.innerHTML = '&#128247;'; // camera emoji
+
+      section.appendChild(label);
+      section.appendChild(select);
+      section.appendChild(fragment);
+      section.appendChild(placeholder);
+      container.appendChild(section);
+    }
+  }
+
+  function updateFragmentPreview(catKey) {
+    const el = document.getElementById(`fragment-${catKey}`);
+    const selId = currentSelections[catKey];
+    if (!selId) {
+      el.classList.remove('visible');
+      el.textContent = '';
+      return;
+    }
+    const cat = promptOptions[catKey];
+    const opt = cat.options.find(o => o.id === selId);
+    if (opt && opt.expansion) {
+      el.textContent = opt.expansion;
+      el.classList.add('visible');
+    } else if (catKey === 'ratio' && opt) {
+      el.textContent = `Size: ${opt.size}`;
+      el.classList.add('visible');
+    } else {
+      el.classList.remove('visible');
+    }
+  }
+
+  function updateStylePrompt() {
+    // Rebuild auto-generated style text and tags from dropdown selections
+    const tags = [];
+    const fragments = [];
+    for (const catKey of categoryOrder) {
+      const selId = currentSelections[catKey];
+      if (!selId) continue;
+      const cat = promptOptions[catKey];
+      if (!cat) continue;
+      const opt = cat.options.find(o => o.id === selId);
+      if (!opt) continue;
+      tags.push({ category: cat.label, label: opt.label });
+      if (opt.expansion) fragments.push(opt.expansion);
+    }
+
+    generatedStyleText = fragments.join(', ');
+
+    // Update tags display
+    const tagsEl = document.getElementById('style-tags');
+    tagsEl.innerHTML = tags.length > 0
+      ? tags.map(t => `<span class="prompt-tag">${escapeHtml(t.category)}: ${escapeHtml(t.label)}</span>`).join('')
+      : '';
+
+    // Only update textarea if not customized
+    if (!customStyle) {
+      document.getElementById('style-prompt').value = generatedStyleText;
+    }
+  }
+
+  function onStylePromptInput() {
+    const textarea = document.getElementById('style-prompt');
+    const currentText = textarea.value;
+    const isCustom = currentText !== generatedStyleText;
+    setCustomStyle(isCustom);
+  }
+
+  function setCustomStyle(isCustom) {
+    customStyle = isCustom;
+    document.getElementById('style-custom-badge').classList.toggle('visible', isCustom);
+    document.getElementById('style-reset-btn').classList.toggle('visible', isCustom);
+    document.getElementById('style-prompt').classList.toggle('customized', isCustom);
+  }
+
+  function resetStylePrompt() {
+    document.getElementById('style-prompt').value = generatedStyleText;
+    setCustomStyle(false);
+  }
+
+  function updateStyleTags() {
+    const tags = [];
+    for (const catKey of categoryOrder) {
+      const selId = currentSelections[catKey];
+      if (!selId) continue;
+      const cat = promptOptions[catKey];
+      if (!cat) continue;
+      const opt = cat.options.find(o => o.id === selId);
+      if (opt) tags.push({ category: cat.label, label: opt.label });
+    }
+    document.getElementById('style-tags').innerHTML = tags.length > 0
+      ? tags.map(t => `<span class="prompt-tag">${escapeHtml(t.category)}: ${escapeHtml(t.label)}</span>`).join('')
+      : '';
+  }
+
+  function showConfirmDialog(message, onConfirm, onCancel) {
+    const overlay = document.createElement('div');
+    overlay.className = 'dialog-overlay';
+    overlay.innerHTML = `
+      <div class="dialog-box">
+        <p>${escapeHtml(message)}</p>
+        <div class="dialog-buttons">
+          <button class="dialog-btn-cancel" id="dialog-cancel">Keep custom</button>
+          <button class="dialog-btn-confirm" id="dialog-confirm">Override</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+
+    overlay.querySelector('#dialog-confirm').addEventListener('click', () => {
+      overlay.remove();
+      onConfirm();
+    });
+    overlay.querySelector('#dialog-cancel').addEventListener('click', () => {
+      overlay.remove();
+      onCancel();
+    });
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) {
+        overlay.remove();
+        onCancel();
+      }
+    });
+  }
+
+  function escapeHtml(str) {
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  // Style textarea input tracking
+  document.getElementById('style-prompt').addEventListener('input', onStylePromptInput);
+
+  // ── Reference images ──
+  const refDrop = document.getElementById('ref-drop');
+  const refInput = document.getElementById('ref-input');
+  refDrop.addEventListener('click', () => refInput.click());
+  refDrop.addEventListener('dragover', e => { e.preventDefault(); refDrop.classList.add('dragover'); });
+  refDrop.addEventListener('dragleave', () => refDrop.classList.remove('dragover'));
+  refDrop.addEventListener('drop', e => { e.preventDefault(); refDrop.classList.remove('dragover'); uploadRefs(e.dataTransfer.files); });
+  refInput.addEventListener('change', () => uploadRefs(refInput.files));
+
+  async function uploadRefs(fileList) {
+    const fd = new FormData();
+    for (const f of fileList) fd.append('files', f);
+    const res = await fetch('/api/reference', { method: 'POST', body: fd });
+    const uploaded = await res.json();
+    references.push(...uploaded);
+    renderRefs();
+  }
+
+  function renderRefs() {
+    document.getElementById('ref-thumbnails').innerHTML = references.map(r =>
+      `<img class="ref-thumb" src="${r.url}" alt="${r.name}" title="${r.name}">`
+    ).join('');
+  }
+
+  // ── Generate ──
+  async function generate() {
+    const prompt = document.getElementById('prompt').value.trim();
+    if (!prompt) return;
+
+    const btn = document.getElementById('gen-btn');
+    const display = document.getElementById('result-display');
+    const errorEl = document.getElementById('error');
+    errorEl.textContent = '';
+    btn.disabled = true;
+    btn.textContent = 'Generating...';
+    display.innerHTML = '<div class="loading">Creating your scene</div>';
+
+    // Build selections object (only non-null)
+    const selections = {};
+    for (const [k, v] of Object.entries(currentSelections)) {
+      if (v) selections[k] = v;
+    }
+
+    try {
+      const res = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt,
+          selections,
+          stylePrompt: document.getElementById('style-prompt').value,
+          custom_style: customStyle,
+          model: document.getElementById('model-select').value,
+          quality: document.getElementById('quality-select').value || undefined
+        })
+      });
+      const data = await res.json();
+
+      if (data.error) throw new Error(data.error);
+
+      showImageWithMeta(data.url, {
+        userPrompt: data.userPrompt,
+        selections: data.selections,
+        stylePrompt: data.stylePrompt,
+        custom_style: data.custom_style,
+        fullPrompt: data.fullPrompt,
+        model: data.model,
+        quality: data.quality
+      });
+
+      loadGallery();
+    } catch (err) {
+      errorEl.textContent = err.message;
+      display.innerHTML = '<div class="placeholder">Generation failed</div>';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Generate Scene';
+    }
+  }
+
+  // ── Image display with metadata ──
+  function showImageWithMeta(url, meta) {
+    const display = document.getElementById('result-display');
+
+    // Build selection tags
+    let tagsHtml = '';
+    if (meta && meta.selections && Object.keys(meta.selections).length > 0) {
+      const tags = [];
+      for (const catKey of categoryOrder) {
+        const selId = meta.selections[catKey];
+        if (!selId) continue;
+        const cat = promptOptions[catKey];
+        if (!cat) continue;
+        const opt = cat.options.find(o => o.id === selId);
+        if (opt) tags.push({ category: cat.label, label: opt.label });
+      }
+      if (tags.length > 0) {
+        tagsHtml = '<div class="prompt-tags">' +
+          tags.map(t => `<span class="prompt-tag">${escapeHtml(t.category)}: ${escapeHtml(t.label)}</span>`).join('') +
+          '</div>';
+      }
+    }
+
+    const hasUserPrompt = meta && meta.userPrompt;
+    const hasStylePrompt = meta && meta.stylePrompt;
+    const hasMeta = hasUserPrompt || hasStylePrompt || tagsHtml;
+
+    // Model/quality info line
+    let modelLine = '';
+    if (meta && meta.model) {
+      const modelObj = availableModels.find(m => m.id === meta.model);
+      const modelLabel = modelObj ? modelObj.label : meta.model;
+      modelLine = `<div class="info-label">Model</div><div class="info-text">${escapeHtml(modelLabel)}${meta.quality ? ' / ' + escapeHtml(meta.quality) : ''}</div>`;
+    }
+
+    const customBadge = meta && meta.custom_style
+      ? ' <span style="font-size:10px;padding:1px 5px;border-radius:3px;background:rgba(180,120,220,0.15);color:#b478dc;border:1px solid rgba(180,120,220,0.3);">customized</span>'
+      : '';
+
+    let infoPanel = '';
+    if (hasMeta) {
+      infoPanel = `<div class="prompt-info-panel" id="prompt-info-panel">
+        ${modelLine}
+        ${tagsHtml}
+        ${hasStylePrompt ? `<div class="info-label">Style${customBadge}</div><div class="info-text">${escapeHtml(meta.stylePrompt)}</div>` : ''}
+        ${hasUserPrompt ? `<div class="info-label">Scene Description</div><div class="info-text">${escapeHtml(meta.userPrompt)}</div>` : ''}
+      </div>`;
+    }
+
+    display.innerHTML = `
+      <img src="${url}" alt="Generated scene">
+      ${infoPanel}
+      <div class="result-overlay-bar">
+        ${hasMeta ? `<button onclick="togglePromptInfo()">Prompt Info</button>` : ''}
+        ${hasMeta ? `<button onclick="applyPrompt()">Apply Prompt</button>` : ''}
+      </div>
+    `;
+    display.dataset.currentMeta = hasMeta ? JSON.stringify(meta) : '';
+  }
+
+  function togglePromptInfo() {
+    const panel = document.getElementById('prompt-info-panel');
+    if (panel) panel.classList.toggle('visible');
+  }
+
+  function applyPrompt() {
+    const display = document.getElementById('result-display');
+    const metaStr = display.dataset.currentMeta;
+    if (!metaStr) return;
+
+    const meta = JSON.parse(metaStr);
+
+    // Set user prompt
+    if (meta.userPrompt) {
+      document.getElementById('prompt').value = meta.userPrompt;
+    }
+
+    // Set all dropdown selections
+    // First reset all
+    for (const catKey of categoryOrder) {
+      const sel = document.getElementById(`select-${catKey}`);
+      if (sel) sel.value = '';
+      currentSelections[catKey] = null;
+    }
+
+    // Then apply saved selections
+    if (meta.selections) {
+      for (const [catKey, selId] of Object.entries(meta.selections)) {
+        const sel = document.getElementById(`select-${catKey}`);
+        if (sel) {
+          sel.value = selId;
+          currentSelections[catKey] = selId;
+          updateFragmentPreview(catKey);
+        }
+      }
+    }
+
+    // Update all fragment previews for reset categories
+    for (const catKey of categoryOrder) {
+      if (!meta.selections || !meta.selections[catKey]) {
+        updateFragmentPreview(catKey);
+      }
+    }
+
+    // Restore model and quality
+    if (meta.model) {
+      const modelSel = document.getElementById('model-select');
+      modelSel.value = meta.model;
+      updateQualityOptions();
+      if (meta.quality) {
+        document.getElementById('quality-select').value = meta.quality;
+      }
+    }
+
+    // Rebuild generated style text from selections, then apply custom if needed
+    updateStylePrompt();
+    if (meta.custom_style && meta.stylePrompt) {
+      document.getElementById('style-prompt').value = meta.stylePrompt;
+      setCustomStyle(true);
+    }
+
+    // Scroll left panel to top for visibility
+    document.querySelector('.left-panel').scrollTop = 0;
+  }
+
+  // ── Gallery ──
+  async function loadGallery() {
+    const res = await fetch('/api/generated');
+    galleryData = await res.json();
+    document.getElementById('gallery').innerHTML = galleryData.map((img, i) =>
+      `<img class="gallery-thumb" src="${img.url}" onclick="showGalleryImage(${i})">`
+    ).join('') || '<span style="color:#5e5b53;font-size:13px;">No images generated yet</span>';
+  }
+
+  function showGalleryImage(index) {
+    const img = galleryData[index];
+    if (!img) return;
+    showImageWithMeta(img.url, img.meta || null);
+  }
+
+  // Init
+  loadGallery();
+  fetch('/api/references').then(r => r.json()).then(refs => { references = refs; renderRefs(); });
+</script>
+</body>
+</html>

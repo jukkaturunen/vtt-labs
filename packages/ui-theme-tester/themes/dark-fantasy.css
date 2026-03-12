@@ -1,0 +1,21 @@
+/* Dark Fantasy — deep blacks, gold accents, parchment tones */
+:root {
+  --bg-primary: #0d0d0f;
+  --bg-secondary: #1a1a1f;
+  --bg-panel: #141418;
+  --bg-hover: #22222a;
+  --border: #2a2a33;
+  --border-accent: #c9a84c;
+  --text-primary: #e8e4da;
+  --text-secondary: #9a9689;
+  --text-muted: #5e5b53;
+  --accent: #c9a84c;
+  --accent-hover: #dbb85a;
+  --accent-dim: rgba(201, 168, 76, 0.15);
+  --danger: #b44040;
+  --success: #4a8c5c;
+  --radius: 4px;
+  --font-body: 'Segoe UI', system-ui, sans-serif;
+  --font-heading: Georgia, 'Times New Roman', serif;
+  --shadow: 0 2px 8px rgba(0,0,0,0.4);
+}

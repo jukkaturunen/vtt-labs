@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dice Tray</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: #1a1a2e;
+      color: #e0e0e0;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 20px;
+      background: #16213e;
+      border-bottom: 1px solid #0f3460;
+    }
+
+    header h1 {
+      font-size: 1.3rem;
+      font-weight: 600;
+      color: #e94560;
+    }
+
+    .theme-controls {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      font-size: 0.8rem;
+    }
+
+    .theme-controls label { color: #8899aa; }
+
+    .theme-controls select {
+      background: #1a1a2e;
+      color: #e0e0e0;
+      border: 1px solid #0f3460;
+      border-radius: 4px;
+      padding: 4px 8px;
+      font-size: 0.8rem;
+    }
+
+    .main {
+      display: flex;
+      flex: 1;
+      min-height: 0;
+    }
+
+    /* ── Left panel: controls ── */
+    .controls {
+      width: 280px;
+      min-width: 280px;
+      background: #16213e;
+      border-right: 1px solid #0f3460;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      padding: 16px;
+      overflow-y: auto;
+    }
+
+    .section-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #667788;
+      margin-bottom: 4px;
+    }
+
+    /* Dice type picker */
+    .dice-picker {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .dice-btn {
+      padding: 8px 12px;
+      border: 2px solid #0f3460;
+      border-radius: 6px;
+      background: #1a1a2e;
+      color: #c0c0c0;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 600;
+      transition: all 0.15s;
+    }
+
+    .dice-btn:hover { border-color: #e94560; color: #fff; }
+    .dice-btn.active { border-color: #e94560; background: #e94560; color: #fff; }
+
+    /* Quantity & modifier */
+    .row {
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+    }
+
+    .field { display: flex; flex-direction: column; gap: 4px; flex: 1; }
+
+    .field input {
+      background: #1a1a2e;
+      border: 1px solid #0f3460;
+      border-radius: 6px;
+      padding: 8px 10px;
+      color: #e0e0e0;
+      font-size: 0.95rem;
+      text-align: center;
+    }
+
+    .field input:focus { outline: none; border-color: #e94560; }
+
+    /* Notation input */
+    .notation-input {
+      width: 100%;
+      background: #1a1a2e;
+      border: 1px solid #0f3460;
+      border-radius: 6px;
+      padding: 10px;
+      color: #e0e0e0;
+      font-size: 1rem;
+      font-family: 'Courier New', monospace;
+    }
+
+    .notation-input:focus { outline: none; border-color: #e94560; }
+    .notation-input::placeholder { color: #445566; }
+
+    /* Roll button */
+    .roll-btn {
+      width: 100%;
+      padding: 14px;
+      background: #e94560;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 1.1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s;
+      letter-spacing: 0.05em;
+    }
+
+    .roll-btn:hover { background: #d63851; }
+    .roll-btn:active { transform: scale(0.98); }
+    .roll-btn:disabled { background: #555; cursor: not-allowed; }
+
+    /* Quick roll buttons */
+    .quick-rolls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .quick-btn {
+      padding: 6px 10px;
+      border: 1px solid #0f3460;
+      border-radius: 4px;
+      background: transparent;
+      color: #8899aa;
+      cursor: pointer;
+      font-size: 0.75rem;
+      font-family: 'Courier New', monospace;
+      transition: all 0.15s;
+    }
+
+    .quick-btn:hover { border-color: #e94560; color: #e0e0e0; }
+
+    /* Replay button */
+    .replay-btn {
+      width: 100%;
+      padding: 10px;
+      background: transparent;
+      color: #8899aa;
+      border: 1px solid #0f3460;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .replay-btn:hover { border-color: #e94560; color: #e0e0e0; }
+    .replay-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+    /* ── Center: 3D dice area ── */
+    .dice-area {
+      flex: 1;
+      position: relative;
+      min-width: 0;
+    }
+
+    #dice-container {
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Current result overlay */
+    .result-overlay {
+      position: absolute;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(22, 33, 62, 0.9);
+      border: 1px solid #0f3460;
+      border-radius: 10px;
+      padding: 12px 24px;
+      text-align: center;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .result-overlay.visible { opacity: 1; }
+
+    .result-notation {
+      font-family: 'Courier New', monospace;
+      font-size: 0.85rem;
+      color: #8899aa;
+      margin-bottom: 4px;
+    }
+
+    .result-dice {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      margin-bottom: 6px;
+    }
+
+    .result-die {
+      background: #1a1a2e;
+      border: 1px solid #0f3460;
+      border-radius: 4px;
+      padding: 4px 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #e0e0e0;
+    }
+
+    .result-die.crit { color: #4ade80; border-color: #4ade80; }
+    .result-die.fumble { color: #f87171; border-color: #f87171; }
+
+    .result-total {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: #e94560;
+    }
+
+    .result-modifier {
+      font-size: 0.9rem;
+      color: #8899aa;
+    }
+
+    /* ── Right panel: history ── */
+    .history-panel {
+      width: 260px;
+      min-width: 260px;
+      background: #16213e;
+      border-left: 1px solid #0f3460;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .history-header {
+      padding: 12px 16px;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #667788;
+      border-bottom: 1px solid #0f3460;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .clear-history {
+      background: none;
+      border: none;
+      color: #667788;
+      cursor: pointer;
+      font-size: 0.75rem;
+    }
+
+    .clear-history:hover { color: #e94560; }
+
+    .history-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px;
+    }
+
+    .history-entry {
+      padding: 10px 12px;
+      border-radius: 6px;
+      margin-bottom: 6px;
+      background: #1a1a2e;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: border-color 0.15s;
+    }
+
+    .history-entry:hover { border-color: #0f3460; }
+
+    .history-entry .notation {
+      font-family: 'Courier New', monospace;
+      font-size: 0.8rem;
+      color: #8899aa;
+    }
+
+    .history-entry .values {
+      font-size: 0.85rem;
+      color: #c0c0c0;
+      margin: 2px 0;
+    }
+
+    .history-entry .total {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #e94560;
+    }
+
+    .history-entry .time {
+      font-size: 0.7rem;
+      color: #556677;
+      float: right;
+      margin-top: 2px;
+    }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #0f3460; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #1a4a8a; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Dice Tray</h1>
+    <div class="theme-controls">
+      <label>Surface</label>
+      <select id="surface-select">
+        <option value="green-felt">Green Felt</option>
+        <option value="wood-tray">Wood Tray</option>
+        <option value="wood-table">Wood Table</option>
+        <option value="metal">Metal</option>
+      </select>
+      <label>Dice</label>
+      <select id="colorset-select">
+        <option value="white">White</option>
+        <option value="red">Red</option>
+        <option value="blue">Blue</option>
+        <option value="green">Green</option>
+        <option value="black">Black</option>
+        <option value="poison">Poison</option>
+        <option value="acid">Acid</option>
+        <option value="fire">Fire</option>
+        <option value="ice">Ice</option>
+        <option value="bronze">Bronze</option>
+        <option value="glitter_party">Glitter</option>
+      </select>
+      <label>Material</label>
+      <select id="material-select">
+        <option value="glass">Glass</option>
+        <option value="plastic">Plastic</option>
+        <option value="metal">Metal</option>
+        <option value="wood">Wood</option>
+        <option value="none">Flat</option>
+      </select>
+    </div>
+  </header>
+
+  <div class="main">
+    <!-- Left: Controls -->
+    <div class="controls">
+      <div>
+        <div class="section-label">Dice Type</div>
+        <div class="dice-picker">
+          <button class="dice-btn" data-die="d4">d4</button>
+          <button class="dice-btn active" data-die="d6">d6</button>
+          <button class="dice-btn" data-die="d8">d8</button>
+          <button class="dice-btn" data-die="d10">d10</button>
+          <button class="dice-btn" data-die="d12">d12</button>
+          <button class="dice-btn" data-die="d20">d20</button>
+          <button class="dice-btn" data-die="d100">d100</button>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <div class="section-label">Quantity</div>
+          <input type="number" id="qty" value="2" min="1" max="20">
+        </div>
+        <div class="field">
+          <div class="section-label">Modifier</div>
+          <input type="number" id="modifier" value="0">
+        </div>
+      </div>
+
+      <button class="roll-btn" id="roll-btn">Roll</button>
+
+      <div>
+        <div class="section-label">Or type notation</div>
+        <input class="notation-input" id="notation" type="text" placeholder="e.g. 2d6+3 or 1d20+1d4">
+      </div>
+
+      <div>
+        <div class="section-label">Quick Rolls</div>
+        <div class="quick-rolls">
+          <button class="quick-btn" data-roll="1d20">1d20</button>
+          <button class="quick-btn" data-roll="1d20+5">1d20+5</button>
+          <button class="quick-btn" data-roll="2d6">2d6</button>
+          <button class="quick-btn" data-roll="4d6">4d6</button>
+          <button class="quick-btn" data-roll="1d8+3">1d8+3</button>
+          <button class="quick-btn" data-roll="1d12">1d12</button>
+          <button class="quick-btn" data-roll="2d10">2d10</button>
+          <button class="quick-btn" data-roll="8d6">8d6</button>
+        </div>
+      </div>
+
+      <button class="replay-btn" id="replay-btn" disabled>Replay Last Roll</button>
+    </div>
+
+    <!-- Center: 3D Dice -->
+    <div class="dice-area">
+      <div id="dice-container"></div>
+      <div class="result-overlay" id="result-overlay">
+        <div class="result-notation" id="result-notation"></div>
+        <div class="result-dice" id="result-dice"></div>
+        <div class="result-total" id="result-total"></div>
+      </div>
+    </div>
+
+    <!-- Right: History -->
+    <div class="history-panel">
+      <div class="history-header">
+        Roll History
+        <button class="clear-history" id="clear-history">Clear</button>
+      </div>
+      <div class="history-list" id="history-list"></div>
+    </div>
+  </div>
+
+  <script type="module">
+    import DiceBox from 'https://cdn.jsdelivr.net/npm/@drdreo/dice-box-threejs@1.1.0/dist/dice-box-threejs.es.js';
+
+    // ── State ──
+    let selectedDie = 'd6';
+    let rolling = false;
+    let lastRoll = null; // { notation, results }
+    const history = [];
+
+    // ── DOM refs ──
+    const rollBtn = document.getElementById('roll-btn');
+    const replayBtn = document.getElementById('replay-btn');
+    const qtyInput = document.getElementById('qty');
+    const modInput = document.getElementById('modifier');
+    const notationInput = document.getElementById('notation');
+    const resultOverlay = document.getElementById('result-overlay');
+    const resultNotation = document.getElementById('result-notation');
+    const resultDice = document.getElementById('result-dice');
+    const resultTotal = document.getElementById('result-total');
+    const historyList = document.getElementById('history-list');
+    const surfaceSelect = document.getElementById('surface-select');
+    const colorsetSelect = document.getElementById('colorset-select');
+    const materialSelect = document.getElementById('material-select');
+
+    // ── Init dice box ──
+    const box = new DiceBox('#dice-container', {
+      assetPath: 'https://cdn.jsdelivr.net/npm/@drdreo/dice-box-threejs@1.1.0/dist/',
+      theme_surface: 'green-felt',
+      theme_colorset: 'white',
+      theme_material: 'glass',
+      sounds: true,
+      volume: 50,
+      shadows: true,
+      strength: 1,
+      gravity_multiplier: 400,
+      baseScale: 100,
+      light_intensity: 2,
+    });
+
+    await box.initialize();
+
+    // ── Build notation from controls ──
+    function getNotation() {
+      const custom = notationInput.value.trim();
+      if (custom) return custom;
+      const qty = parseInt(qtyInput.value) || 1;
+      const mod = parseInt(modInput.value) || 0;
+      let notation = `${qty}${selectedDie}`;
+      if (mod > 0) notation += `+${mod}`;
+      else if (mod < 0) notation += `${mod}`;
+      return notation;
+    }
+
+    // ── Display results ──
+    function showResult(results) {
+      resultNotation.textContent = results.notation;
+
+      resultDice.innerHTML = '';
+      for (const set of results.sets) {
+        for (const die of set.rolls) {
+          const el = document.createElement('span');
+          el.className = 'result-die';
+          el.textContent = die.value;
+          // Highlight crits and fumbles on d20
+          if (die.sides === 20 && die.value === 20) el.classList.add('crit');
+          if (die.sides === 20 && die.value === 1) el.classList.add('fumble');
+          resultDice.appendChild(el);
+        }
+      }
+
+      let totalText = `${results.total}`;
+      if (results.modifier) {
+        const modSign = results.modifier > 0 ? '+' : '';
+        totalText += ` (${modSign}${results.modifier})`;
+      }
+      resultTotal.textContent = totalText;
+      resultOverlay.classList.add('visible');
+    }
+
+    // ── Add to history ──
+    function addToHistory(notation, results) {
+      const entry = {
+        notation,
+        sets: results.sets,
+        total: results.total,
+        modifier: results.modifier,
+        time: new Date(),
+      };
+      history.unshift(entry);
+      if (history.length > 50) history.pop();
+      renderHistory();
+    }
+
+    function renderHistory() {
+      historyList.innerHTML = '';
+      for (const entry of history) {
+        const div = document.createElement('div');
+        div.className = 'history-entry';
+
+        const allValues = entry.sets.flatMap(s => s.rolls.map(r => r.value));
+        const timeStr = entry.time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+        div.innerHTML = `
+          <span class="time">${timeStr}</span>
+          <div class="notation">${entry.notation}</div>
+          <div class="values">[${allValues.join(', ')}]</div>
+          <div class="total">= ${entry.total}${entry.modifier ? ` (${entry.modifier > 0 ? '+' : ''}${entry.modifier})` : ''}</div>
+        `;
+
+        // Click to replay this roll
+        div.addEventListener('click', () => {
+          replayRoll(entry.notation, entry.sets);
+        });
+
+        historyList.appendChild(div);
+      }
+    }
+
+    // ── Roll ──
+    async function doRoll(notation) {
+      if (rolling) return;
+      rolling = true;
+      rollBtn.disabled = true;
+      resultOverlay.classList.remove('visible');
+
+      try {
+        const results = await box.roll(notation);
+        showResult(results);
+        addToHistory(notation, results);
+        lastRoll = { notation, results };
+        replayBtn.disabled = false;
+      } catch (err) {
+        console.error('Roll failed:', err);
+      } finally {
+        rolling = false;
+        rollBtn.disabled = false;
+      }
+    }
+
+    // ── Replay with predetermined values ──
+    async function replayRoll(notation, sets) {
+      if (rolling) return;
+
+      // Build notation with forced values using @ syntax
+      // e.g. "2d6+3" with values [4, 2] becomes "2d6+3@4,2"
+      const parts = [];
+      for (const set of sets) {
+        const values = set.rolls.map(r => r.value).join(',');
+        const base = `${set.num}${set.type}`;
+        parts.push(`${base}@${values}`);
+      }
+
+      // Extract modifier from original notation
+      const modMatch = notation.match(/([+-]\d+)$/);
+      let forcedNotation = parts.join('+');
+      if (modMatch) forcedNotation += modMatch[1];
+
+      await doRoll(forcedNotation);
+    }
+
+    // ── Event handlers ──
+
+    // Dice type buttons
+    document.querySelectorAll('.dice-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.dice-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        selectedDie = btn.dataset.die;
+        notationInput.value = ''; // clear custom notation when picking type
+      });
+    });
+
+    // Roll button
+    rollBtn.addEventListener('click', () => doRoll(getNotation()));
+
+    // Notation input — enter to roll
+    notationInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') doRoll(getNotation());
+    });
+
+    // Quick roll buttons
+    document.querySelectorAll('.quick-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        notationInput.value = '';
+        doRoll(btn.dataset.roll);
+      });
+    });
+
+    // Replay button
+    replayBtn.addEventListener('click', () => {
+      if (lastRoll) replayRoll(lastRoll.notation, lastRoll.results.sets);
+    });
+
+    // Clear history
+    document.getElementById('clear-history').addEventListener('click', () => {
+      history.length = 0;
+      renderHistory();
+    });
+
+    // Theme controls
+    surfaceSelect.addEventListener('change', () => {
+      box.updateConfig({ theme_surface: surfaceSelect.value });
+    });
+
+    colorsetSelect.addEventListener('change', () => {
+      box.updateConfig({ theme_colorset: colorsetSelect.value });
+    });
+
+    materialSelect.addEventListener('change', () => {
+      box.updateConfig({ theme_material: materialSelect.value });
+    });
+
+    // Handle window resize
+    window.addEventListener('resize', () => {
+      const container = document.getElementById('dice-container');
+      box.setDimensions({ x: container.clientWidth, y: container.clientHeight });
+    });
+  </script>
+</body>
+</html>

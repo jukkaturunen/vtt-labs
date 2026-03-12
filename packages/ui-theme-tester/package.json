@@ -1,0 +1,10 @@
+{
+  "name": "@vtt-labs/ui-theme-tester",
+  "type": "module",
+  "scripts": {
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.0"
+  }
+}
