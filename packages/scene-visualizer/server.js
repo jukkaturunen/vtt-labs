@@ -76,21 +76,39 @@ app.get('/api/references', (req, res) => {
 
 // ── Prompt Options (multi-dimensional prompt builder) ──
 const PROMPT_OPTIONS = {
-  theme: {
-    label: 'Theme',
+  setting: {
+    label: 'Setting',
     options: [
-      { id: 'fantasy', label: 'High Fantasy', expansion: 'high fantasy setting with magical elements, enchanted atmosphere, arcane energy and mythical creatures' },
-      { id: 'dark-fantasy', label: 'Dark Fantasy', expansion: 'dark fantasy setting, grim and foreboding atmosphere, corrupted magic, morally ambiguous world' },
-      { id: 'sci-fi', label: 'Science Fiction', expansion: 'science fiction setting, advanced technology, futuristic architecture, holographic displays and neon lighting' },
-      { id: 'steampunk', label: 'Steampunk', expansion: 'steampunk setting, Victorian-era aesthetics with brass machinery, clockwork mechanisms, steam-powered devices and airships' },
-      { id: 'horror', label: 'Horror', expansion: 'horror setting, unsettling and dread-filled atmosphere, lurking threats in shadows, sense of isolation and vulnerability' },
-      { id: 'post-apocalyptic', label: 'Post-Apocalyptic', expansion: 'post-apocalyptic setting, ruined civilization, overgrown ruins, scavenged technology, survival atmosphere' },
-      { id: 'mythological', label: 'Mythological', expansion: 'mythological setting, inspired by ancient legends and divine beings, sacred temples, godly presence' },
-      { id: 'pirate', label: 'Pirate / Nautical', expansion: 'nautical pirate setting, wooden sailing ships, tropical islands, treasure maps, swashbuckling adventure' },
-      { id: 'western', label: 'Wild West', expansion: 'wild west setting, dusty frontier towns, saloons, desert landscapes, rugged frontier atmosphere' },
-      { id: 'gothic', label: 'Gothic', expansion: 'gothic setting, towering cathedrals, gargoyles, mist-shrouded graveyards, romantic dark elegance' },
-      { id: 'fairy-tale', label: 'Fairy Tale', expansion: 'fairy tale setting, enchanted forests, whimsical cottages, magical creatures, storybook wonder' },
-      { id: 'urban-modern', label: 'Urban Modern', expansion: 'modern urban setting, contemporary city streets, glass and steel architecture, everyday realism' }
+      { id: 'high-fantasy', label: 'High Fantasy', expansion: 'high fantasy medieval world, stone castles and towers, ornate craftsmanship, a world where magic exists' },
+      { id: 'dark-fantasy', label: 'Dark Fantasy', expansion: 'dark fantasy world, decayed grandeur, corrupted landscapes, bleak and weathered architecture' },
+      { id: 'sword-sorcery', label: 'Sword & Sorcery', expansion: 'sword and sorcery world, ancient ruins, untamed wilderness, primal and dangerous setting' },
+      { id: 'sci-fi', label: 'Science Fiction', expansion: 'science fiction setting, advanced technology, futuristic architecture, sleek metallic and glass surfaces' },
+      { id: 'steampunk', label: 'Steampunk', expansion: 'steampunk world, Victorian-era architecture, brass and copper machinery, visible gears and steam pipes' },
+      { id: 'horror', label: 'Horror', expansion: 'horror setting, decrepit and unsettling environment, wrong proportions, things not quite right' },
+      { id: 'post-apocalyptic', label: 'Post-Apocalyptic', expansion: 'post-apocalyptic world, ruined modern structures reclaimed by nature, improvised repairs, scavenged materials' },
+      { id: 'mythological', label: 'Mythological', expansion: 'ancient mythological world, monumental temples and sacred sites, larger-than-life scale' },
+      { id: 'pirate-nautical', label: 'Pirate / Nautical', expansion: 'age of sail setting, wooden ships and harbors, rope and canvas, salt-weathered surfaces, tropical and maritime' },
+      { id: 'western', label: 'Wild West', expansion: 'American frontier setting, sun-bleached wood buildings, dusty open terrain, rugged and sparse' },
+      { id: 'gothic', label: 'Gothic', expansion: 'gothic setting, pointed arches and ribbed vaults, ornate stone tracery, vertical imposing architecture' },
+      { id: 'fairy-tale', label: 'Fairy Tale', expansion: 'fairy tale world, storybook proportions, whimsical organic shapes, enchanted and idyllic' },
+      { id: 'urban-modern', label: 'Urban Modern', expansion: 'contemporary urban setting, concrete and glass, modern infrastructure, present-day world' }
+    ]
+  },
+  atmosphere: {
+    label: 'Atmosphere',
+    options: [
+      { id: 'menacing', label: 'Menacing', expansion: 'menacing and threatening atmosphere, sense of lurking danger, oppressive tension' },
+      { id: 'serene', label: 'Serene', expansion: 'serene and peaceful atmosphere, calm stillness, gentle and undisturbed' },
+      { id: 'mysterious', label: 'Mysterious', expansion: 'mysterious atmosphere, secrets and hidden things, enigmatic and uncertain' },
+      { id: 'epic', label: 'Epic', expansion: 'epic and grand atmosphere, awe-inspiring scale, momentous and powerful' },
+      { id: 'melancholic', label: 'Melancholic', expansion: 'melancholic atmosphere, sadness and loss, faded beauty, bittersweet' },
+      { id: 'festive', label: 'Festive', expansion: 'lively festive atmosphere, celebration and warmth, bustling energy' },
+      { id: 'sacred', label: 'Sacred', expansion: 'sacred and reverent atmosphere, hallowed presence, solemn dignity' },
+      { id: 'eerie', label: 'Eerie', expansion: 'eerie unsettling atmosphere, something subtly wrong, uncanny and disquieting' },
+      { id: 'cozy', label: 'Cozy', expansion: 'cozy intimate atmosphere, warmth and shelter, comfortable and inviting' },
+      { id: 'desolate', label: 'Desolate', expansion: 'desolate and abandoned atmosphere, emptiness and isolation, forsaken' },
+      { id: 'chaotic', label: 'Chaotic', expansion: 'chaotic and turbulent atmosphere, disorder and upheaval, volatile energy' },
+      { id: 'romantic', label: 'Romantic', expansion: 'romantic atmosphere, beauty and passion, heightened emotion, dramatic elegance' }
     ]
   },
   style: {
@@ -209,7 +227,7 @@ const PROMPT_OPTIONS = {
 };
 
 // Category order for consistent iteration
-const CATEGORY_ORDER = ['theme', 'style', 'lighting', 'lens', 'angle', 'ratio', 'mood', 'composition', 'detail'];
+const CATEGORY_ORDER = ['setting', 'atmosphere', 'style', 'lighting', 'lens', 'angle', 'ratio', 'mood', 'composition', 'detail'];
 
 app.get('/api/prompt-options', (req, res) => {
   res.json({ categories: PROMPT_OPTIONS, order: CATEGORY_ORDER });
