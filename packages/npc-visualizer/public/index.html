@@ -1,0 +1,1033 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VTT NPC Visualizer</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #0d0d0f;
+      color: #e8e4da;
+      min-height: 100vh;
+      padding: 16px;
+    }
+    h1 { font-size: 20px; color: #c9a84c; margin-bottom: 4px; }
+    .subtitle { font-size: 13px; color: #5e5b53; margin-bottom: 20px; }
+
+    .layout { display: grid; grid-template-columns: 420px 1fr; gap: 16px; min-height: calc(100vh - 80px); }
+
+    /* ── Left Panel ── */
+    .left-panel {
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      padding-right: 8px;
+    }
+    .left-panel::-webkit-scrollbar { width: 6px; }
+    .left-panel::-webkit-scrollbar-track { background: transparent; }
+    .left-panel::-webkit-scrollbar-thumb { background: #2a2a33; border-radius: 3px; }
+
+    .panel {
+      background: #1a1a1f;
+      border: 1px solid #2a2a33;
+      border-radius: 6px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+
+    /* Group headers */
+    .group-header {
+      font-size: 10px;
+      font-weight: 700;
+      color: #c9a84c;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      padding: 8px 0 6px;
+      border-bottom: 1px solid #2a2a33;
+      margin-bottom: 10px;
+      margin-top: 6px;
+    }
+    .group-header:first-child { margin-top: 0; }
+
+    /* Category rows */
+    .cat-row { margin-bottom: 10px; }
+    .cat-row:last-child { margin-bottom: 0; }
+    .cat-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: #9a9689;
+      margin-bottom: 4px;
+    }
+
+    /* Select dropdowns */
+    .cat-row select {
+      width: 100%;
+      padding: 7px 10px;
+      background: #141418;
+      border: 1px solid #2a2a33;
+      border-radius: 4px;
+      color: #e8e4da;
+      font-family: inherit;
+      font-size: 13px;
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235e5b53' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+    }
+    .cat-row select:focus { outline: none; border-color: #c9a84c; }
+    .cat-row select:hover { border-color: #3a3a43; }
+
+    /* Fragment preview */
+    .fragment-preview {
+      font-size: 11px;
+      color: #5e5b53;
+      margin-top: 4px;
+      padding: 4px 8px;
+      background: #111114;
+      border-radius: 3px;
+      font-style: italic;
+      line-height: 1.4;
+      display: none;
+    }
+    .fragment-preview.visible { display: block; }
+
+    /* Custom species input */
+    .species-custom-input {
+      width: 100%;
+      margin-top: 4px;
+      padding: 6px 10px;
+      background: #141418;
+      border: 1px solid rgba(201, 168, 76, 0.3);
+      border-radius: 4px;
+      color: #e8e4da;
+      font-family: inherit;
+      font-size: 12px;
+      display: none;
+    }
+    .species-custom-input.visible { display: block; }
+    .species-custom-input:focus { outline: none; border-color: #c9a84c; }
+    .species-custom-input::placeholder { color: #3a3a43; }
+
+    /* Multi-select toggle grid */
+    .toggle-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-bottom: 6px;
+    }
+    .toggle-btn {
+      padding: 4px 9px;
+      font-size: 11px;
+      font-family: inherit;
+      border: 1px solid #2a2a33;
+      border-radius: 3px;
+      background: #141418;
+      color: #9a9689;
+      cursor: pointer;
+      transition: all 0.12s;
+      line-height: 1.4;
+    }
+    .toggle-btn:hover { border-color: #3a3a43; color: #e8e4da; }
+    .toggle-btn.active {
+      background: rgba(201, 168, 76, 0.12);
+      border-color: rgba(201, 168, 76, 0.45);
+      color: #c9a84c;
+    }
+
+    /* Custom text input (multi-select and others) */
+    .custom-text-input {
+      width: 100%;
+      padding: 5px 8px;
+      background: #141418;
+      border: 1px solid #2a2a33;
+      border-radius: 4px;
+      color: #e8e4da;
+      font-family: inherit;
+      font-size: 11px;
+      margin-top: 4px;
+    }
+    .custom-text-input::placeholder { color: #3a3a43; }
+    .custom-text-input:focus { outline: none; border-color: #c9a84c; }
+
+    /* ── Right Panel ── */
+    .right-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    h2 { font-size: 13px; color: #9a9689; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+
+    textarea {
+      width: 100%;
+      padding: 10px;
+      background: #141418;
+      border: 1px solid #2a2a33;
+      border-radius: 4px;
+      color: #e8e4da;
+      font-family: inherit;
+      font-size: 13px;
+      resize: vertical;
+    }
+    textarea:focus { outline: none; border-color: #c9a84c; }
+    textarea::placeholder { color: #5e5b53; }
+
+    /* Character Profile */
+    .char-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+    .char-header h2 { margin-bottom: 0; }
+    .char-custom-badge {
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 3px;
+      background: rgba(180, 120, 220, 0.15);
+      color: #b478dc;
+      border: 1px solid rgba(180, 120, 220, 0.3);
+      display: none;
+    }
+    .char-custom-badge.visible { display: inline-block; }
+    .char-reset-btn {
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 3px;
+      background: none;
+      color: #5e5b53;
+      border: 1px solid #2a2a33;
+      cursor: pointer;
+      display: none;
+    }
+    .char-reset-btn.visible { display: inline-block; }
+    .char-reset-btn:hover { color: #c9a84c; border-color: #c9a84c; }
+    #character-prompt { min-height: 90px; }
+    #character-prompt.customized { border-color: rgba(180, 120, 220, 0.4); }
+
+    /* Model / Quality */
+    .model-quality-row {
+      display: flex;
+      gap: 8px;
+      align-items: end;
+    }
+    .mq-group { flex: 1; }
+    .mq-group label {
+      display: block;
+      font-size: 11px;
+      color: #5e5b53;
+      margin-bottom: 3px;
+    }
+    .mq-group select {
+      width: 100%;
+      padding: 6px 8px;
+      background: #141418;
+      border: 1px solid #2a2a33;
+      border-radius: 4px;
+      color: #e8e4da;
+      font-family: inherit;
+      font-size: 12px;
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235e5b53' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 8px center;
+    }
+    .mq-group select:focus { outline: none; border-color: #c9a84c; }
+
+    .generate-btn {
+      width: 100%;
+      padding: 12px;
+      background: #c9a84c;
+      color: #0d0d0f;
+      border: none;
+      border-radius: 4px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .generate-btn:hover { background: #dbb85a; }
+    .generate-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .error-msg { color: #b44040; font-size: 13px; }
+
+    /* Result display */
+    .result-display {
+      background: #1a1a1f;
+      border: 1px solid #2a2a33;
+      border-radius: 6px;
+      min-height: 300px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+    .result-display img {
+      max-width: 100%;
+      height: auto;
+      display: block;
+    }
+    .result-display .placeholder { color: #5e5b53; font-size: 14px; }
+    .result-display .loading { color: #c9a84c; font-size: 14px; }
+    .result-display .loading::after { content: ''; animation: dots 1.5s infinite; }
+    @keyframes dots {
+      0%, 20% { content: ''; }
+      40% { content: '.'; }
+      60% { content: '..'; }
+      80%, 100% { content: '...'; }
+    }
+
+    .result-overlay-bar {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      display: flex;
+      gap: 6px;
+      padding: 6px 10px;
+      background: rgba(20, 20, 24, 0.9);
+      border-radius: 0 0 6px 6px;
+    }
+    .result-overlay-bar button {
+      padding: 4px 10px;
+      font-size: 11px;
+      border: 1px solid #2a2a33;
+      border-radius: 3px;
+      background: #1a1a1f;
+      color: #9a9689;
+      cursor: pointer;
+    }
+    .result-overlay-bar button:hover { border-color: #c9a84c; color: #c9a84c; }
+
+    .prompt-info-panel {
+      position: absolute;
+      bottom: 36px; left: 0; right: 0;
+      background: rgba(20, 20, 24, 0.95);
+      padding: 12px;
+      max-height: 260px;
+      overflow-y: auto;
+      display: none;
+      border-top: 1px solid #2a2a33;
+    }
+    .prompt-info-panel.visible { display: block; }
+    .info-label {
+      font-size: 10px;
+      color: #5e5b53;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 4px;
+      margin-top: 8px;
+    }
+    .info-label:first-child { margin-top: 0; }
+    .info-text {
+      font-size: 12px;
+      color: #e8e4da;
+      line-height: 1.5;
+      word-break: break-word;
+    }
+
+    /* Gallery */
+    .gallery { display: flex; gap: 8px; flex-wrap: wrap; }
+    .gallery-thumb {
+      width: 100px; height: 100px;
+      border-radius: 4px;
+      object-fit: cover;
+      border: 1px solid #2a2a33;
+      cursor: pointer;
+      transition: border-color 0.15s;
+    }
+    .gallery-thumb:hover { border-color: #c9a84c; }
+
+    /* Reference images */
+    .ref-drop {
+      border: 2px dashed #2a2a33;
+      border-radius: 6px;
+      padding: 14px;
+      text-align: center;
+      color: #5e5b53;
+      font-size: 12px;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+    .ref-drop.dragover { border-color: #c9a84c; }
+    .ref-drop input { display: none; }
+    .ref-thumbnails { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+    .ref-thumb {
+      width: 60px; height: 60px;
+      border-radius: 4px;
+      object-fit: cover;
+      border: 1px solid #2a2a33;
+    }
+
+    /* Confirm dialog */
+    .dialog-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    .dialog-box {
+      background: #1a1a1f;
+      border: 1px solid #2a2a33;
+      border-radius: 8px;
+      padding: 20px;
+      max-width: 360px;
+      width: 90%;
+    }
+    .dialog-box p {
+      font-size: 13px;
+      color: #e8e4da;
+      margin-bottom: 16px;
+      line-height: 1.5;
+    }
+    .dialog-buttons { display: flex; gap: 8px; justify-content: flex-end; }
+    .dialog-buttons button {
+      padding: 6px 14px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid #2a2a33;
+    }
+    .dialog-btn-cancel { background: #141418; color: #9a9689; }
+    .dialog-btn-cancel:hover { border-color: #5e5b53; }
+    .dialog-btn-confirm { background: #c9a84c; color: #0d0d0f; border-color: #c9a84c; }
+    .dialog-btn-confirm:hover { background: #dbb85a; }
+  </style>
+</head>
+<body>
+
+<h1>VTT NPC Visualizer</h1>
+<p class="subtitle">Character portrait generator — pick traits, describe your NPC, generate</p>
+
+<div class="layout">
+  <!-- Left: NPC Character Builder -->
+  <div class="left-panel">
+    <div class="panel">
+      <div id="character-sections"></div>
+    </div>
+
+    <!-- Reference Images -->
+    <div class="panel">
+      <h2>Reference Images</h2>
+      <div class="ref-drop" id="ref-drop">
+        Drop reference images here<br>or click to upload
+        <input type="file" id="ref-input" multiple accept="image/*">
+      </div>
+      <div class="ref-thumbnails" id="ref-thumbnails"></div>
+    </div>
+  </div>
+
+  <!-- Right: Generation Area -->
+  <div class="right-panel">
+    <!-- NPC Description -->
+    <div class="panel">
+      <h2>NPC Description</h2>
+      <textarea id="prompt" rows="3" placeholder="Describe this NPC in your own words...&#10;e.g. 'A retired soldier turned innkeeper, haunted by past battles'"></textarea>
+    </div>
+
+    <!-- Character Profile -->
+    <div class="panel">
+      <div class="char-header">
+        <h2>Character Profile</h2>
+        <div>
+          <span class="char-custom-badge" id="char-custom-badge">customized</span>
+          <button class="char-reset-btn" id="char-reset-btn" onclick="resetCharacterPrompt()">reset</button>
+        </div>
+      </div>
+      <textarea id="character-prompt" placeholder="Select character traits from the left panel, or type a character profile directly..."></textarea>
+    </div>
+
+    <!-- Model / Quality -->
+    <div class="panel">
+      <div class="model-quality-row">
+        <div class="mq-group">
+          <label>Model</label>
+          <select id="model-select"></select>
+        </div>
+        <div class="mq-group" id="quality-group">
+          <label>Quality</label>
+          <select id="quality-select"></select>
+        </div>
+      </div>
+    </div>
+
+    <button class="generate-btn" id="gen-btn" onclick="generate()">Generate NPC</button>
+    <div class="error-msg" id="error"></div>
+
+    <div class="result-display" id="result-display">
+      <div class="placeholder">Generated portrait will appear here</div>
+    </div>
+
+    <div class="panel">
+      <h2>Generated Gallery</h2>
+      <div class="gallery" id="gallery"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  let npcOptions = {};
+  let groupOrder = [];
+  let categoryOrder = [];
+  let currentSelections = {}; // catKey -> id (single) or [id,...] (multi)
+  let customInputs = {};      // catKey -> string (species custom text, multi custom text)
+  let generatedCharacterText = '';
+  let customCharacter = false;
+  let references = [];
+  let galleryData = [];
+  let availableModels = [];
+
+  // ── Load options and models ──
+  fetch('/api/npc-options').then(r => r.json()).then(data => {
+    npcOptions = data.options;
+    groupOrder = data.groups;
+    categoryOrder = data.order;
+    buildCharacterSections();
+  });
+
+  fetch('/api/models').then(r => r.json()).then(models => {
+    availableModels = models;
+    const modelSel = document.getElementById('model-select');
+    modelSel.innerHTML = models.map(m => `<option value="${m.id}">${m.label}</option>`).join('');
+    if (models.length === 0) {
+      modelSel.innerHTML = '<option value="">No models configured</option>';
+    }
+    modelSel.addEventListener('change', updateQualityOptions);
+    updateQualityOptions();
+  });
+
+  function updateQualityOptions() {
+    const modelId = document.getElementById('model-select').value;
+    const model = availableModels.find(m => m.id === modelId);
+    const qualSel = document.getElementById('quality-select');
+    const qualGroup = document.getElementById('quality-group');
+    if (!model || model.qualities.length === 0) {
+      qualGroup.style.display = 'none';
+      qualSel.innerHTML = '';
+    } else {
+      qualGroup.style.display = '';
+      qualSel.innerHTML = model.qualities.map(q =>
+        `<option value="${q}"${q === model.defaultQuality ? ' selected' : ''}>${q.charAt(0).toUpperCase() + q.slice(1)}</option>`
+      ).join('');
+    }
+  }
+
+  // ── Build left panel ──
+  function buildCharacterSections() {
+    const container = document.getElementById('character-sections');
+    container.innerHTML = '';
+
+    // Group categories by their group field
+    const grouped = {};
+    for (const catKey of categoryOrder) {
+      const cat = npcOptions[catKey];
+      if (!cat) continue;
+      if (!grouped[cat.group]) grouped[cat.group] = [];
+      grouped[cat.group].push(catKey);
+    }
+
+    for (const groupName of groupOrder) {
+      const cats = grouped[groupName] || [];
+      if (cats.length === 0) continue;
+
+      const header = document.createElement('div');
+      header.className = 'group-header';
+      header.textContent = groupName;
+      container.appendChild(header);
+
+      for (const catKey of cats) {
+        const cat = npcOptions[catKey];
+        if (!cat) continue;
+
+        const row = document.createElement('div');
+        row.className = 'cat-row';
+
+        const label = document.createElement('div');
+        label.className = 'cat-label';
+        label.textContent = cat.label;
+        row.appendChild(label);
+
+        if (cat.type === 'multi') {
+          // Toggle button grid
+          const grid = document.createElement('div');
+          grid.className = 'toggle-grid';
+          grid.id = `grid-${catKey}`;
+          currentSelections[catKey] = [];
+
+          for (const opt of cat.options) {
+            const btn = document.createElement('button');
+            btn.className = 'toggle-btn';
+            btn.textContent = opt.label;
+            btn.dataset.id = opt.id;
+            btn.addEventListener('click', () => toggleMultiOption(catKey, opt.id, btn));
+            grid.appendChild(btn);
+          }
+          row.appendChild(grid);
+
+          // Custom text input below multi-select
+          const customIn = document.createElement('input');
+          customIn.type = 'text';
+          customIn.className = 'custom-text-input';
+          customIn.placeholder = '+ Add custom...';
+          customIn.id = `custom-${catKey}`;
+          customIn.addEventListener('input', () => {
+            customInputs[catKey] = customIn.value;
+            onSelectionChange(catKey);
+          });
+          row.appendChild(customIn);
+
+        } else {
+          // Single-select dropdown
+          const select = document.createElement('select');
+          select.id = `select-${catKey}`;
+          select.innerHTML = `<option value="">— None —</option>` +
+            cat.options.map(o => `<option value="${o.id}">${o.label}</option>`).join('');
+
+          select.addEventListener('change', () => {
+            const prevValue = currentSelections[catKey];
+            currentSelections[catKey] = select.value || null;
+
+            // Species custom input visibility
+            if (catKey === 'species') {
+              document.getElementById('species-custom-input').classList.toggle('visible', select.value === 'custom');
+              if (select.value !== 'custom') customInputs['species'] = '';
+            }
+
+            updateFragmentPreview(catKey);
+
+            if (customCharacter) {
+              showConfirmDialog('Override your custom character profile?', () => {
+                setCustomCharacter(false);
+                updateCharacterPrompt();
+              }, () => {
+                currentSelections[catKey] = prevValue;
+                select.value = prevValue || '';
+                if (catKey === 'species') {
+                  document.getElementById('species-custom-input').classList.toggle('visible', select.value === 'custom');
+                }
+                updateFragmentPreview(catKey);
+              });
+            } else {
+              updateCharacterPrompt();
+            }
+          });
+          row.appendChild(select);
+
+          // Species custom text input (hidden by default)
+          if (catKey === 'species') {
+            const speciesCustom = document.createElement('input');
+            speciesCustom.type = 'text';
+            speciesCustom.className = 'species-custom-input';
+            speciesCustom.id = 'species-custom-input';
+            speciesCustom.placeholder = 'e.g. Lizardfolk, Kenku, Aasimar...';
+            speciesCustom.addEventListener('input', () => {
+              customInputs['species'] = speciesCustom.value;
+              onSelectionChange('species');
+            });
+            row.appendChild(speciesCustom);
+          }
+
+          // Fragment preview
+          const fragment = document.createElement('div');
+          fragment.className = 'fragment-preview';
+          fragment.id = `fragment-${catKey}`;
+          row.appendChild(fragment);
+        }
+
+        container.appendChild(row);
+      }
+    }
+  }
+
+  function toggleMultiOption(catKey, optId, btn) {
+    const arr = currentSelections[catKey] || [];
+    const prevArr = [...arr];
+    const idx = arr.indexOf(optId);
+
+    if (idx === -1) arr.push(optId);
+    else arr.splice(idx, 1);
+    currentSelections[catKey] = arr;
+    btn.classList.toggle('active', arr.includes(optId));
+
+    if (customCharacter) {
+      showConfirmDialog('Override your custom character profile?', () => {
+        setCustomCharacter(false);
+        updateCharacterPrompt();
+      }, () => {
+        // Revert
+        currentSelections[catKey] = prevArr;
+        btn.classList.toggle('active', prevArr.includes(optId));
+      });
+    } else {
+      updateCharacterPrompt();
+    }
+  }
+
+  function onSelectionChange(catKey) {
+    if (customCharacter) {
+      showConfirmDialog('Override your custom character profile?', () => {
+        setCustomCharacter(false);
+        updateCharacterPrompt();
+      }, () => {
+        // Revert customInputs — complex, so just re-assemble without updating
+        // User keeps custom; just update the raw text behind the scenes
+        generatedCharacterText = assembleCharacterPrompt();
+      });
+    } else {
+      updateCharacterPrompt();
+    }
+  }
+
+  function updateFragmentPreview(catKey) {
+    const el = document.getElementById(`fragment-${catKey}`);
+    if (!el) return;
+    const selId = currentSelections[catKey];
+    if (!selId || selId === 'custom') {
+      el.classList.remove('visible');
+      el.textContent = '';
+      return;
+    }
+    const cat = npcOptions[catKey];
+    const opt = cat.options.find(o => o.id === selId);
+    if (opt && opt.expansion) {
+      el.textContent = opt.expansion;
+      el.classList.add('visible');
+    } else {
+      el.classList.remove('visible');
+    }
+  }
+
+  // ── Character prompt assembly ──
+  function assembleCharacterPrompt() {
+    const parts = [];
+    for (const catKey of categoryOrder) {
+      const cat = npcOptions[catKey];
+      if (!cat) continue;
+
+      if (cat.type === 'multi') {
+        const selected = currentSelections[catKey] || [];
+        for (const id of selected) {
+          const opt = cat.options.find(o => o.id === id);
+          if (opt && opt.expansion) parts.push(opt.expansion);
+        }
+        if (customInputs[catKey] && customInputs[catKey].trim()) {
+          parts.push(customInputs[catKey].trim());
+        }
+      } else {
+        const selId = currentSelections[catKey];
+        if (!selId) continue;
+
+        if (catKey === 'species' && selId === 'custom') {
+          if (customInputs['species'] && customInputs['species'].trim()) {
+            parts.push(customInputs['species'].trim());
+          }
+          continue;
+        }
+
+        const opt = cat.options.find(o => o.id === selId);
+        if (opt && opt.expansion) parts.push(opt.expansion);
+      }
+    }
+    return parts.join(', ');
+  }
+
+  function updateCharacterPrompt() {
+    generatedCharacterText = assembleCharacterPrompt();
+    if (!customCharacter) {
+      document.getElementById('character-prompt').value = generatedCharacterText;
+    }
+  }
+
+  function onCharacterPromptInput() {
+    const currentText = document.getElementById('character-prompt').value;
+    setCustomCharacter(currentText !== generatedCharacterText);
+  }
+
+  function setCustomCharacter(isCustom) {
+    customCharacter = isCustom;
+    document.getElementById('char-custom-badge').classList.toggle('visible', isCustom);
+    document.getElementById('char-reset-btn').classList.toggle('visible', isCustom);
+    document.getElementById('character-prompt').classList.toggle('customized', isCustom);
+  }
+
+  function resetCharacterPrompt() {
+    document.getElementById('character-prompt').value = generatedCharacterText;
+    setCustomCharacter(false);
+  }
+
+  document.getElementById('character-prompt').addEventListener('input', onCharacterPromptInput);
+
+  // ── Confirm dialog ──
+  function showConfirmDialog(message, onConfirm, onCancel) {
+    const overlay = document.createElement('div');
+    overlay.className = 'dialog-overlay';
+    overlay.innerHTML = `
+      <div class="dialog-box">
+        <p>${escapeHtml(message)}</p>
+        <div class="dialog-buttons">
+          <button class="dialog-btn-cancel" id="dialog-cancel">Keep custom</button>
+          <button class="dialog-btn-confirm" id="dialog-confirm">Override</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    overlay.querySelector('#dialog-confirm').addEventListener('click', () => { overlay.remove(); onConfirm(); });
+    overlay.querySelector('#dialog-cancel').addEventListener('click', () => { overlay.remove(); onCancel(); });
+    overlay.addEventListener('click', e => { if (e.target === overlay) { overlay.remove(); onCancel(); } });
+  }
+
+  function escapeHtml(str) {
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  // ── Reference images ──
+  const refDrop = document.getElementById('ref-drop');
+  const refInput = document.getElementById('ref-input');
+  refDrop.addEventListener('click', () => refInput.click());
+  refDrop.addEventListener('dragover', e => { e.preventDefault(); refDrop.classList.add('dragover'); });
+  refDrop.addEventListener('dragleave', () => refDrop.classList.remove('dragover'));
+  refDrop.addEventListener('drop', e => { e.preventDefault(); refDrop.classList.remove('dragover'); uploadRefs(e.dataTransfer.files); });
+  refInput.addEventListener('change', () => uploadRefs(refInput.files));
+
+  async function uploadRefs(fileList) {
+    const fd = new FormData();
+    for (const f of fileList) fd.append('files', f);
+    const res = await fetch('/api/reference', { method: 'POST', body: fd });
+    const uploaded = await res.json();
+    references.push(...uploaded);
+    renderRefs();
+  }
+
+  function renderRefs() {
+    document.getElementById('ref-thumbnails').innerHTML = references.map(r =>
+      `<img class="ref-thumb" src="${r.url}" alt="${r.name}" title="${r.name}">`
+    ).join('');
+  }
+
+  // ── Generate ──
+  async function generate() {
+    const prompt = document.getElementById('prompt').value.trim();
+    const characterPrompt = document.getElementById('character-prompt').value.trim();
+    if (!prompt && !characterPrompt) {
+      document.getElementById('error').textContent = 'Enter an NPC description or select character traits.';
+      return;
+    }
+
+    const btn = document.getElementById('gen-btn');
+    const display = document.getElementById('result-display');
+    const errorEl = document.getElementById('error');
+    errorEl.textContent = '';
+    btn.disabled = true;
+    btn.textContent = 'Generating...';
+    display.innerHTML = '<div class="loading">Creating your NPC</div>';
+
+    // Build selections (multi as arrays, single as string)
+    const selections = {};
+    for (const [k, v] of Object.entries(currentSelections)) {
+      if (Array.isArray(v) ? v.length > 0 : v) selections[k] = v;
+    }
+
+    // Only include non-empty customInputs
+    const cleanCustomInputs = {};
+    for (const [k, v] of Object.entries(customInputs)) {
+      if (v && v.trim()) cleanCustomInputs[k] = v.trim();
+    }
+
+    try {
+      const res = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt,
+          characterPrompt,
+          custom_character: customCharacter,
+          selections,
+          customInputs: cleanCustomInputs,
+          model: document.getElementById('model-select').value,
+          quality: document.getElementById('quality-select').value || undefined
+        })
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+
+      showImageWithMeta(data.url, {
+        userPrompt: data.userPrompt,
+        characterPrompt: data.characterPrompt,
+        custom_character: data.custom_character,
+        fullPrompt: data.fullPrompt,
+        model: data.model,
+        quality: data.quality,
+        selections: data.selections,
+        customInputs: data.customInputs
+      });
+      loadGallery();
+    } catch (err) {
+      errorEl.textContent = err.message;
+      display.innerHTML = '<div class="placeholder">Generation failed</div>';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Generate NPC';
+    }
+  }
+
+  // ── Image display ──
+  function showImageWithMeta(url, meta) {
+    const display = document.getElementById('result-display');
+    const hasChar = meta && meta.characterPrompt;
+    const hasUser = meta && meta.userPrompt;
+    const hasMeta = hasChar || hasUser;
+
+    let modelLine = '';
+    if (meta && meta.model) {
+      const modelObj = availableModels.find(m => m.id === meta.model);
+      const modelLabel = modelObj ? modelObj.label : meta.model;
+      modelLine = `<div class="info-label">Model</div><div class="info-text">${escapeHtml(modelLabel)}${meta.quality ? ' / ' + escapeHtml(meta.quality) : ''}</div>`;
+    }
+
+    const customBadge = meta && meta.custom_character
+      ? ' <span style="font-size:10px;padding:1px 5px;border-radius:3px;background:rgba(180,120,220,0.15);color:#b478dc;border:1px solid rgba(180,120,220,0.3);">customized</span>'
+      : '';
+
+    let infoPanel = '';
+    if (hasMeta) {
+      infoPanel = `<div class="prompt-info-panel" id="prompt-info-panel">
+        ${modelLine}
+        ${hasChar ? `<div class="info-label">Character Profile${customBadge}</div><div class="info-text">${escapeHtml(meta.characterPrompt)}</div>` : ''}
+        ${hasUser ? `<div class="info-label">NPC Description</div><div class="info-text">${escapeHtml(meta.userPrompt)}</div>` : ''}
+      </div>`;
+    }
+
+    display.innerHTML = `
+      <img src="${url}" alt="Generated NPC">
+      ${infoPanel}
+      <div class="result-overlay-bar">
+        ${hasMeta ? `<button onclick="togglePromptInfo()">Prompt Info</button>` : ''}
+        ${hasMeta ? `<button onclick="applyPrompt()">Apply Prompt</button>` : ''}
+      </div>
+    `;
+    display.dataset.currentMeta = hasMeta ? JSON.stringify(meta) : '';
+  }
+
+  function togglePromptInfo() {
+    const panel = document.getElementById('prompt-info-panel');
+    if (panel) panel.classList.toggle('visible');
+  }
+
+  function applyPrompt() {
+    const display = document.getElementById('result-display');
+    const metaStr = display.dataset.currentMeta;
+    if (!metaStr) return;
+    const meta = JSON.parse(metaStr);
+
+    // Restore NPC description
+    if (meta.userPrompt !== undefined) document.getElementById('prompt').value = meta.userPrompt;
+
+    // Reset all selections
+    for (const catKey of categoryOrder) {
+      const cat = npcOptions[catKey];
+      if (!cat) continue;
+      if (cat.type === 'multi') {
+        currentSelections[catKey] = [];
+        const grid = document.getElementById(`grid-${catKey}`);
+        if (grid) grid.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+      } else {
+        currentSelections[catKey] = null;
+        const sel = document.getElementById(`select-${catKey}`);
+        if (sel) sel.value = '';
+        updateFragmentPreview(catKey);
+      }
+    }
+
+    // Reset custom inputs
+    customInputs = {};
+    for (const catKey of categoryOrder) {
+      const inp = document.getElementById(`custom-${catKey}`);
+      if (inp) inp.value = '';
+    }
+    const speciesCustom = document.getElementById('species-custom-input');
+    if (speciesCustom) { speciesCustom.value = ''; speciesCustom.classList.remove('visible'); }
+
+    // Apply saved selections
+    if (meta.selections) {
+      for (const [catKey, val] of Object.entries(meta.selections)) {
+        const cat = npcOptions[catKey];
+        if (!cat) continue;
+        if (cat.type === 'multi') {
+          currentSelections[catKey] = Array.isArray(val) ? val : [val];
+          const grid = document.getElementById(`grid-${catKey}`);
+          if (grid) {
+            grid.querySelectorAll('.toggle-btn').forEach(btn => {
+              btn.classList.toggle('active', currentSelections[catKey].includes(btn.dataset.id));
+            });
+          }
+        } else {
+          currentSelections[catKey] = val;
+          const sel = document.getElementById(`select-${catKey}`);
+          if (sel) {
+            sel.value = val;
+            if (catKey === 'species' && val === 'custom') {
+              if (speciesCustom) speciesCustom.classList.add('visible');
+            }
+            updateFragmentPreview(catKey);
+          }
+        }
+      }
+    }
+
+    // Apply saved custom inputs
+    if (meta.customInputs) {
+      for (const [catKey, val] of Object.entries(meta.customInputs)) {
+        customInputs[catKey] = val;
+        const inp = document.getElementById(`custom-${catKey}`);
+        if (inp) inp.value = val;
+        if (catKey === 'species' && speciesCustom) speciesCustom.value = val;
+      }
+    }
+
+    // Restore model / quality
+    if (meta.model) {
+      const modelSel = document.getElementById('model-select');
+      modelSel.value = meta.model;
+      updateQualityOptions();
+      if (meta.quality) document.getElementById('quality-select').value = meta.quality;
+    }
+
+    // Rebuild and apply character prompt
+    generatedCharacterText = assembleCharacterPrompt();
+    if (meta.custom_character && meta.characterPrompt) {
+      document.getElementById('character-prompt').value = meta.characterPrompt;
+      setCustomCharacter(true);
+    } else {
+      document.getElementById('character-prompt').value = generatedCharacterText;
+      setCustomCharacter(false);
+    }
+
+    document.querySelector('.left-panel').scrollTop = 0;
+  }
+
+  // ── Gallery ──
+  async function loadGallery() {
+    const res = await fetch('/api/generated');
+    galleryData = await res.json();
+    document.getElementById('gallery').innerHTML = galleryData.map((img, i) =>
+      `<img class="gallery-thumb" src="${img.url}" onclick="showGalleryImage(${i})" title="Click to view">`
+    ).join('') || '<span style="color:#5e5b53;font-size:13px;">No images generated yet</span>';
+  }
+
+  function showGalleryImage(index) {
+    const img = galleryData[index];
+    if (!img) return;
+    showImageWithMeta(img.url, img.meta || null);
+  }
+
+  // Init
+  loadGallery();
+  fetch('/api/references').then(r => r.json()).then(refs => { references = refs; renderRefs(); });
+</script>
+</body>
+</html>

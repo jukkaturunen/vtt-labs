@@ -1,6 +1,6 @@
 # VTT Labs — Quick Test Apps
 
-Five standalone mini-apps for prototyping VTT features fast.
+Standalone mini-apps for prototyping VTT features fast.
 
 ## Quick Start
 
@@ -16,6 +16,7 @@ npm run mixer    # :3002 — Audio Mixer/Playlist
 npm run chat     # :3003 — Audio Chat (Daily.co)
 npm run scene    # :3004 — Scene Visualizer (OpenAI)
 npm run dice     # :3005 — Dice Tray
+npm run npc      # :3006 — NPC Visualizer (OpenAI/xAI/Gemini)
 ```
 
 ## API Keys Required
@@ -30,6 +31,15 @@ echo "DAILY_API_KEY=your-key" > packages/audio-chat/.env
 echo "OPENAI_API_KEY=your-key" > packages/scene-visualizer/.env
 ```
 
+**NPC Visualizer** — Supports OpenAI, xAI, and Google Gemini (configure whichever you have)
+```bash
+cat > packages/npc-visualizer/.env << 'EOF'
+OPENAI_API_KEY=your-key
+XAI_API_KEY=your-key
+GOOGLE_API_KEY=your-key
+EOF
+```
+
 ## Apps
 
 | App | Port | External Deps | Description |
@@ -39,6 +49,7 @@ echo "OPENAI_API_KEY=your-key" > packages/scene-visualizer/.env
 | Audio Chat | 3003 | Daily.co API | Voice chat rooms. Runs on 0.0.0.0 for remote testing |
 | Scene Visualizer | 3004 | OpenAI API | Pick a visual style, describe a scene, generate with AI |
 | Dice Tray | 3005 | None | 3D dice roller — all standard RPG dice, roll history, customizable surface/color |
+| NPC Visualizer | 3006 | OpenAI / xAI / Gemini API | Pick character traits across 7 groups, describe your NPC, generate portrait with AI |
 
 ## Adding Themes
 

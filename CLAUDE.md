@@ -2,7 +2,7 @@
 
 ## What This Is
 
-A bundle of six standalone mini web apps for quickly testing Virtual Tabletop (VTT) features. These are demos/prototypes, not production code. The goal is fast iteration — no build steps, no frameworks, edit and refresh.
+A bundle of standalone mini web apps for quickly testing Virtual Tabletop (VTT) features. These are demos/prototypes, not production code. The goal is fast iteration — no build steps, no frameworks, edit and refresh.
 
 All apps are vanilla JS + Express. Each frontend is a single `public/index.html` with inline CSS and JS.
 
@@ -50,9 +50,9 @@ vtt-labs/
 │   │   ├── server.js          # Static file server only, no API keys
 │   │   └── public/index.html  # 3D dice roller using @drdreo/dice-box-threejs
 │   └── npc-visualizer/
-│       ├── server.js          # Multi-model image gen proxy (xAI/Gemini), appearance presets
-│       ├── public/index.html  # Appearance options, prompt input, NPC gallery
-│       └── .env               # XAI_API_KEY, GEMINI_API_KEY go here
+│       ├── server.js          # Multi-model image gen proxy (OpenAI/xAI/Gemini), structured NPC trait builder
+│       ├── public/index.html  # Character trait picker (7 groups, 20 categories), prompt builder, NPC gallery
+│       └── .env               # OPENAI_API_KEY, XAI_API_KEY, GOOGLE_API_KEY go here
 ```
 
 ## Architecture Notes
@@ -90,12 +90,15 @@ vtt-labs/
 - Reference image upload exists but is not yet wired into generation (future: img2img).
 
 ### npc app
-- Similar to scene app but focused on generating NPC portrait/character images for RPGs.
-- Supports multiple image generation models: `grok-imagine-image` (xAI) and `gemini-2.5-flash-image` (Google). Model is selectable per request.
-- Appearance presets are defined in `server.js` as objects with `prompt_prefix` strings (e.g. "grizzled dwarf warrior", "elven court mage").
-- Players pick an appearance preset, describe the NPC, and the server prepends the preset before calling the selected model's API.
-- Returns base64 images, saved to `generated/` dir.
-- API keys: `XAI_API_KEY` for grok model, `GEMINI_API_KEY` for Gemini model — both in `.env`.
+- Structured character builder: 20 trait categories across 7 groups (Identity, Physique, Face & Hair, Distinctive Features, Attire & Equipment, Expression & Pose, Presentation).
+- 18 single-select dropdowns + 2 multi-select toggle grids (Distinctive Features, Accessories).
+- Species "Custom" option reveals a freeform text input. Multi-select groups each have a "+ Add custom..." text input.
+- Selections auto-assemble into a "Character Profile" textarea. Users can edit it directly (shows "customized" badge, purple border, reset button). Changing dropdowns after customizing triggers a confirmation dialog.
+- All prompts prefixed with subject anchor (`1 person, solo, single subject, alone`) to keep output focused on a single NPC.
+- Supports 3 image generation models: `gpt-image-1` (OpenAI), `grok-imagine-image` (xAI), `gemini-2.5-flash-image` (Google). Model selectable per request.
+- Portrait orientation (1024x1536) for OpenAI model. Returns base64 images, saved to `generated/` dir.
+- "Apply Prompt" on gallery images fully restores all selections, custom inputs, model/quality, and character profile state.
+- API keys: `OPENAI_API_KEY`, `XAI_API_KEY`, `GOOGLE_API_KEY` — all in `.env`.
 
 ### dice app
 - Uses `@drdreo/dice-box-threejs` (Three.js + Cannon-ES) loaded from CDN. No npm install needed for the 3D engine.
@@ -114,7 +117,7 @@ vtt-labs/
 
 **Change image model or size:** Edit the `openai.images.generate()` call in scene app's `server.js`.
 
-**Add a new NPC appearance preset:** Edit the `APPEARANCE_PRESETS` array in `packages/npc-visualizer/server.js`. No frontend change needed — presets are fetched from API.
+**Add a new NPC trait option:** Edit the `NPC_OPTIONS` object in `packages/npc-visualizer/server.js` — add entries to an existing category's `options` array, or add a new category with its `group`, `label`, `type`, and `options`. No frontend change needed — options are fetched from `/api/npc-options`.
 
 **Debug audio issues:** Browser devtools → check `audioCtx.state` (must be `'running'`, not `'suspended'`). User interaction is required before Web Audio works.
 
