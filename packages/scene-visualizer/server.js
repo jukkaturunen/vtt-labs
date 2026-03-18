@@ -14,9 +14,33 @@ const PORT = 3004;
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
 const XAI_API_KEY = process.env.XAI_API_KEY || '';
+const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY || '';
 
 const openai = OPENAI_API_KEY ? new OpenAI({ apiKey: OPENAI_API_KEY }) : null;
 const xai = XAI_API_KEY ? new OpenAI({ apiKey: XAI_API_KEY, baseURL: 'https://api.x.ai/v1' }) : null;
+
+// Gemini image generation via REST API
+async function geminiGenerate(prompt) {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${GOOGLE_API_KEY}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: { responseModalities: ['TEXT', 'IMAGE'] }
+    })
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error?.message || `Gemini API error: ${res.status}`);
+  }
+  const data = await res.json();
+  // Find the image part in the response
+  const parts = data.candidates?.[0]?.content?.parts || [];
+  const imagePart = parts.find(p => p.inlineData?.mimeType?.startsWith('image/'));
+  if (!imagePart) throw new Error('Gemini did not return an image');
+  return { b64_json: imagePart.inlineData.data };
+}
 
 // Model configuration
 const MODEL_CONFIG = {
@@ -33,6 +57,14 @@ const MODEL_CONFIG = {
     qualities: [],
     defaultQuality: null,
     supportsSize: false
+  },
+  'gemini-2.5-flash-image': {
+    label: 'Gemini Flash (Google)',
+    client: () => GOOGLE_API_KEY ? 'gemini' : null,
+    qualities: [],
+    defaultQuality: null,
+    supportsSize: false,
+    customGenerate: true
   }
 };
 
@@ -278,23 +310,29 @@ app.post('/api/generate', async (req, res) => {
     : null;
 
   try {
-    const genParams = { model, prompt: fullPrompt, n: 1 };
-    if (modelCfg.supportsSize) genParams.size = size;
-    if (resolvedQuality) genParams.quality = resolvedQuality;
-
-    const response = await client.images.generate(genParams);
-
     const filename = `gen-${Date.now()}.png`;
     const filepath = path.join(generatedDir, filename);
     let imageUrl;
 
-    if (response.data[0].b64_json) {
-      fs.writeFileSync(filepath, Buffer.from(response.data[0].b64_json, 'base64'));
-    } else if (response.data[0].url) {
-      // Download remote image (e.g. xAI returns URLs)
-      const imgRes = await fetch(response.data[0].url);
-      const arrBuf = await imgRes.arrayBuffer();
-      fs.writeFileSync(filepath, Buffer.from(arrBuf));
+    if (modelCfg.customGenerate) {
+      // Gemini path
+      const result = await geminiGenerate(fullPrompt);
+      fs.writeFileSync(filepath, Buffer.from(result.b64_json, 'base64'));
+    } else {
+      // OpenAI-compatible path (OpenAI, xAI)
+      const genParams = { model, prompt: fullPrompt, n: 1 };
+      if (modelCfg.supportsSize) genParams.size = size;
+      if (resolvedQuality) genParams.quality = resolvedQuality;
+
+      const response = await client.images.generate(genParams);
+
+      if (response.data[0].b64_json) {
+        fs.writeFileSync(filepath, Buffer.from(response.data[0].b64_json, 'base64'));
+      } else if (response.data[0].url) {
+        const imgRes = await fetch(response.data[0].url);
+        const arrBuf = await imgRes.arrayBuffer();
+        fs.writeFileSync(filepath, Buffer.from(arrBuf));
+      }
     }
 
     imageUrl = `/generated/${filename}`;
@@ -344,6 +382,7 @@ app.listen(PORT, () => {
   console.log(`\n  Scene Visualizer -> http://localhost:${PORT}`);
   console.log(`  OpenAI: ${OPENAI_API_KEY ? 'configured' : 'not configured'}`);
   console.log(`  xAI:    ${XAI_API_KEY ? 'configured' : 'not configured'}`);
+  console.log(`  Google: ${GOOGLE_API_KEY ? 'configured' : 'not configured'}`);
   const totalOptions = CATEGORY_ORDER.reduce((sum, cat) => sum + PROMPT_OPTIONS[cat].options.length, 0);
   console.log(`  ${CATEGORY_ORDER.length} prompt categories, ${totalOptions} options available\n`);
 });

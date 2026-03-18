@@ -2,7 +2,7 @@
 
 ## What This Is
 
-A bundle of five standalone mini web apps for quickly testing Virtual Tabletop (VTT) features. These are demos/prototypes, not production code. The goal is fast iteration — no build steps, no frameworks, edit and refresh.
+A bundle of six standalone mini web apps for quickly testing Virtual Tabletop (VTT) features. These are demos/prototypes, not production code. The goal is fast iteration — no build steps, no frameworks, edit and refresh.
 
 All apps are vanilla JS + Express. Each frontend is a single `public/index.html` with inline CSS and JS.
 
@@ -17,6 +17,7 @@ Use these short names when referring to apps:
 | **chat app** | Audio Chat | `packages/audio-chat/` | 3003 | `npm run chat` |
 | **scene app** | Scene Visualizer | `packages/scene-visualizer/` | 3004 | `npm run scene` |
 | **dice app** | Dice Tray | `packages/dice-tray/` | 3005 | `npm run dice` |
+| **npc app** | NPC Visualizer | `packages/npc-visualizer/` | 3006 | `npm run npc` |
 
 ## Directory Structure
 
@@ -45,9 +46,13 @@ vtt-labs/
 │   │   ├── server.js          # OpenAI gpt-image-1 proxy, style presets, ref image uploads
 │   │   ├── public/index.html  # Style picker, prompt input, gallery
 │   │   └── .env               # OPENAI_API_KEY goes here
-│   └── dice-tray/
-│       ├── server.js          # Static file server only, no API keys
-│       └── public/index.html  # 3D dice roller using @drdreo/dice-box-threejs
+│   ├── dice-tray/
+│   │   ├── server.js          # Static file server only, no API keys
+│   │   └── public/index.html  # 3D dice roller using @drdreo/dice-box-threejs
+│   └── npc-visualizer/
+│       ├── server.js          # Multi-model image gen proxy (xAI/Gemini), appearance presets
+│       ├── public/index.html  # Appearance options, prompt input, NPC gallery
+│       └── .env               # XAI_API_KEY, GEMINI_API_KEY go here
 ```
 
 ## Architecture Notes
@@ -84,6 +89,14 @@ vtt-labs/
 - Uses `gpt-image-1` model, returns base64, saved to `generated/` dir.
 - Reference image upload exists but is not yet wired into generation (future: img2img).
 
+### npc app
+- Similar to scene app but focused on generating NPC portrait/character images for RPGs.
+- Supports multiple image generation models: `grok-imagine-image` (xAI) and `gemini-2.5-flash-image` (Google). Model is selectable per request.
+- Appearance presets are defined in `server.js` as objects with `prompt_prefix` strings (e.g. "grizzled dwarf warrior", "elven court mage").
+- Players pick an appearance preset, describe the NPC, and the server prepends the preset before calling the selected model's API.
+- Returns base64 images, saved to `generated/` dir.
+- API keys: `XAI_API_KEY` for grok model, `GEMINI_API_KEY` for Gemini model — both in `.env`.
+
 ### dice app
 - Uses `@drdreo/dice-box-threejs` (Three.js + Cannon-ES) loaded from CDN. No npm install needed for the 3D engine.
 - All assets (textures, sounds) served from jsDelivr CDN.
@@ -101,6 +114,8 @@ vtt-labs/
 
 **Change image model or size:** Edit the `openai.images.generate()` call in scene app's `server.js`.
 
+**Add a new NPC appearance preset:** Edit the `APPEARANCE_PRESETS` array in `packages/npc-visualizer/server.js`. No frontend change needed — presets are fetched from API.
+
 **Debug audio issues:** Browser devtools → check `audioCtx.state` (must be `'running'`, not `'suspended'`). User interaction is required before Web Audio works.
 
 ## Gotchas
@@ -108,5 +123,6 @@ vtt-labs/
 - Web Audio API requires a user gesture before `AudioContext` activates. If audio doesn't play, click something first.
 - Daily.co free tier: 10,000 participant-minutes/month. Fine for testing.
 - OpenAI image generation costs money per call. `quality: 'medium'` is set to keep costs down.
+- xAI and Gemini image generation also cost money per call. Pick the cheaper model for bulk testing.
 - localtunnel URLs can be flaky. If remote testing is unreliable, ngrok is more stable.
 - All state is in-memory or on-disk. Restarting a server doesn't lose uploaded files but does lose any in-browser state.

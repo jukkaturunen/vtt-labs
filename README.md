@@ -1,6 +1,6 @@
 # VTT Labs — Quick Test Apps
 
-Four standalone mini-apps for prototyping VTT features fast.
+Five standalone mini-apps for prototyping VTT features fast.
 
 ## Quick Start
 
@@ -15,6 +15,7 @@ npm run ui       # :3001 — UI Theme Tester
 npm run mixer    # :3002 — Audio Mixer/Playlist
 npm run chat     # :3003 — Audio Chat (Daily.co)
 npm run scene    # :3004 — Scene Visualizer (OpenAI)
+npm run dice     # :3005 — Dice Tray
 ```
 
 ## API Keys Required
@@ -37,6 +38,7 @@ echo "OPENAI_API_KEY=your-key" > packages/scene-visualizer/.env
 | Audio Mixer | 3002 | None | Upload audio, mix multiple tracks, pan/volume, playlists |
 | Audio Chat | 3003 | Daily.co API | Voice chat rooms. Runs on 0.0.0.0 for remote testing |
 | Scene Visualizer | 3004 | OpenAI API | Pick a visual style, describe a scene, generate with AI |
+| Dice Tray | 3005 | None | 3D dice roller — all standard RPG dice, roll history, customizable surface/color |
 
 ## Adding Themes
 
