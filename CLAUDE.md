@@ -18,6 +18,7 @@ Use these short names when referring to apps:
 | **scene app** | Scene Visualizer | `packages/scene-visualizer/` | 3004 | `npm run scene` |
 | **dice app** | Dice Tray | `packages/dice-tray/` | 3005 | `npm run dice` |
 | **npc app** | NPC Visualizer | `packages/npc-visualizer/` | 3006 | `npm run npc` |
+| **forge app** | NPC Forge | `packages/npc-forge/` | 3007 | `npm run forge` |
 
 ## Directory Structure
 
@@ -49,9 +50,13 @@ vtt-labs/
 │   ├── dice-tray/
 │   │   ├── server.js          # Static file server only, no API keys
 │   │   └── public/index.html  # 3D dice roller using @drdreo/dice-box-threejs
-│   └── npc-visualizer/
-│       ├── server.js          # Multi-model image gen proxy (OpenAI/xAI/Gemini), structured NPC trait builder
-│       ├── public/index.html  # Character trait picker (7 groups, 20 categories), prompt builder, NPC gallery
+│   ├── npc-visualizer/
+│   │   ├── server.js          # Multi-model image gen proxy (OpenAI/xAI/Gemini), structured NPC trait builder
+│   │   ├── public/index.html  # Character trait picker (7 groups, 20 categories), prompt builder, NPC gallery
+│   │   └── .env               # OPENAI_API_KEY, XAI_API_KEY, GOOGLE_API_KEY go here
+│   └── npc-forge/
+│       ├── server.js          # Multi-model image gen proxy, archetype system, tag-based trait builder
+│       ├── public/index.html  # Tag-based character builder, archetypes, card export, compare mode
 │       └── .env               # OPENAI_API_KEY, XAI_API_KEY, GOOGLE_API_KEY go here
 ```
 
@@ -100,6 +105,22 @@ vtt-labs/
 - "Apply Prompt" on gallery images fully restores all selections, custom inputs, model/quality, and character profile state.
 - API keys: `OPENAI_API_KEY`, `XAI_API_KEY`, `GOOGLE_API_KEY` — all in `.env`.
 
+### forge app
+- Multi-genre NPC character generator with tag-based UI instead of dropdowns.
+- **8 genre modes:** Fantasy, Sci-Fi, Cyberpunk, Horror, Modern, Post-Apocalyptic, Steampunk, Western. Genre selector filters visible trait options and archetypes to genre-relevant choices. Genre context is prepended to the image prompt.
+- **40+ archetype quick-start templates** across all genres (e.g. Fantasy: Warrior/Mage/Rogue; Cyberpunk: Street Samurai/Netrunner/Fixer; Horror: Investigator/Vampire/Cultist; Western: Gunslinger/Sheriff/Outlaw). Selecting an archetype auto-switches to its genre.
+- 22 trait categories across 7 groups. Trait options tagged with `genres` array; universal options show in all genres, genre-specific ones only when that genre is active.
+- Smart randomizer respects genre: picks genre-matching archetype, fills traits from genre-visible options only.
+- Supports same 3 image generation models as npc app: `gpt-image-1`, `grok-imagine-image`, `gemini-2.5-flash-image`.
+- Live prompt preview panel shows the full assembled prompt in real-time as traits are selected.
+- Gallery with favorites system (persistent via JSON metadata files), filter by all/favorites.
+- Fullscreen lightbox with arrow-key navigation and sidebar showing all trait details + full prompt + genre.
+- "Apply Traits" restores all selections, genre, and model from a generated image. "Variation" applies traits then randomizes one for quick iteration.
+- Character card export: renders a styled PNG card with image + trait grid using Canvas API.
+- Side-by-side compare mode: select 2 gallery images to compare.
+- Keyboard shortcuts: R (randomize), G (generate), Esc (close lightbox/compare), arrow keys (navigate lightbox).
+- API keys: `OPENAI_API_KEY`, `XAI_API_KEY`, `GOOGLE_API_KEY` — all in `.env`.
+
 ### dice app
 - Uses `@drdreo/dice-box-threejs` (Three.js + Cannon-ES) loaded from CDN. No npm install needed for the 3D engine.
 - All assets (textures, sounds) served from jsDelivr CDN.
@@ -116,6 +137,12 @@ vtt-labs/
 **Add a new style preset:** Edit `STYLE_PRESETS` array in `packages/scene-visualizer/server.js`. No frontend change needed — styles are fetched from API.
 
 **Change image model or size:** Edit the `openai.images.generate()` call in scene app's `server.js`.
+
+**Add a new forge trait option:** Edit the `TRAITS` object in `packages/npc-forge/server.js` — add entries to an existing category's `options` array (each needs `id`, `label`, `prompt`, and optionally `genres: ['fantasy', 'scifi']` to limit to specific genres). No frontend change needed — traits are fetched from `/api/traits`.
+
+**Add a new forge archetype:** Add an entry to the `ARCHETYPES` array in `packages/npc-forge/server.js` with `id`, `label`, `icon`, `genre`, `description`, and `defaults` mapping trait keys to option IDs. No frontend change needed.
+
+**Add a new forge genre:** Add an entry to the `GENRES` array in `packages/npc-forge/server.js` with `id`, `label`, `icon`, `description`, `promptPrefix`. Then add archetypes and genre-tagged trait options for it.
 
 **Add a new NPC trait option:** Edit the `NPC_OPTIONS` object in `packages/npc-visualizer/server.js` — add entries to an existing category's `options` array, or add a new category with its `group`, `label`, `type`, and `options`. No frontend change needed — options are fetched from `/api/npc-options`.
 

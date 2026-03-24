@@ -1,0 +1,2133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NPC Forge — Character Generator</title>
+<style>
+/* ─── Reset & Base ──────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg-deep: #0d0b0a;
+  --bg-primary: #161412;
+  --bg-secondary: #1e1b18;
+  --bg-card: #231f1b;
+  --bg-hover: #2a2520;
+  --bg-input: #1a1714;
+  --border: #332e28;
+  --border-light: #443d35;
+  --text: #e8e0d4;
+  --text-dim: #9a9082;
+  --text-muted: #6b6358;
+  --gold: #d4a843;
+  --gold-dim: #a07e30;
+  --gold-glow: #d4a84340;
+  --accent-blue: #4a90c4;
+  --accent-green: #5aad6a;
+  --accent-red: #c45a5a;
+  --accent-purple: #8a6ac4;
+  --radius: 6px;
+  --radius-lg: 10px;
+  --shadow: 0 2px 8px rgba(0,0,0,0.4);
+  --shadow-lg: 0 4px 20px rgba(0,0,0,0.6);
+  --font: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --transition: 150ms ease;
+}
+
+html { height: 100%; }
+body {
+  font-family: var(--font);
+  background: var(--bg-deep);
+  color: var(--text);
+  height: 100%;
+  overflow: hidden;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-light); }
+
+/* ─── Layout ────────────────────────────────────────────────────────── */
+#app {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  height: 100vh;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 20px;
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--border);
+  z-index: 10;
+}
+
+.logo {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--gold);
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+.logo span { color: var(--text-dim); font-weight: 400; font-size: 13px; margin-left: 8px; }
+
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.main-content {
+  display: grid;
+  grid-template-columns: 360px 1fr 320px;
+  overflow: hidden;
+}
+
+/* ─── Buttons ───────────────────────────────────────────────────────── */
+button {
+  font-family: var(--font);
+  cursor: pointer;
+  border: none;
+  font-size: 12px;
+  transition: all var(--transition);
+}
+
+.btn {
+  padding: 7px 14px;
+  border-radius: var(--radius);
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-gold {
+  background: var(--gold);
+  color: #1a1410;
+}
+.btn-gold:hover { background: #e0b84f; }
+.btn-gold:disabled { background: var(--gold-dim); opacity: 0.5; cursor: not-allowed; }
+
+.btn-outline {
+  background: transparent;
+  border: 1px solid var(--border-light);
+  color: var(--text-dim);
+}
+.btn-outline:hover { border-color: var(--gold-dim); color: var(--gold); }
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-dim);
+  padding: 6px 10px;
+}
+.btn-ghost:hover { color: var(--gold); background: var(--bg-hover); }
+
+.btn-danger { background: var(--accent-red); color: white; }
+.btn-danger:hover { background: #d46a6a; }
+
+.btn-sm { padding: 4px 10px; font-size: 11px; }
+.btn-icon {
+  width: 32px; height: 32px; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: var(--radius);
+  font-size: 16px;
+}
+
+select {
+  font-family: var(--font);
+  font-size: 12px;
+  padding: 6px 10px;
+  background: var(--bg-input);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  outline: none;
+}
+select:focus { border-color: var(--gold-dim); }
+
+/* ─── Left Panel: Trait Builder ─────────────────────────────────────── */
+.trait-panel {
+  background: var(--bg-primary);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.trait-panel-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.trait-panel-header h2 {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-dim);
+  font-weight: 600;
+}
+
+.trait-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 0;
+}
+
+/* Archetypes */
+.archetype-section {
+  padding: 8px 14px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.archetype-section h3 {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--gold);
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.archetype-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.archetype-btn {
+  padding: 5px 10px;
+  border-radius: var(--radius);
+  background: var(--bg-secondary);
+  color: var(--text-dim);
+  font-size: 11px;
+  border: 1px solid transparent;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.archetype-btn:hover { border-color: var(--gold-dim); color: var(--text); }
+.archetype-btn.active { border-color: var(--gold); color: var(--gold); background: var(--gold-glow); }
+
+/* Genre selector */
+.genre-section {
+  padding: 8px 14px 4px;
+  border-bottom: 1px solid var(--border);
+}
+
+.genre-section h3 {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--gold);
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+
+.genre-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.genre-btn {
+  padding: 4px 10px;
+  border-radius: var(--radius);
+  background: var(--bg-secondary);
+  color: var(--text-dim);
+  font-size: 11px;
+  border: 1px solid transparent;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.genre-btn:hover { border-color: var(--gold-dim); color: var(--text); }
+.genre-btn.active { border-color: var(--gold); color: var(--gold); background: var(--gold-glow); }
+
+.genre-desc {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+  font-style: italic;
+  min-height: 14px;
+}
+
+/* Hidden tags (filtered out by genre) */
+.tag.genre-hidden { display: none; }
+.archetype-btn.genre-hidden { display: none; }
+
+/* Trait Groups */
+.trait-group {
+  border-bottom: 1px solid var(--border);
+}
+
+.trait-group-header {
+  padding: 8px 14px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--gold);
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  user-select: none;
+}
+
+.trait-group-header:hover { background: var(--bg-hover); }
+
+.trait-group-header .chevron {
+  font-size: 8px;
+  transition: transform var(--transition);
+  color: var(--text-muted);
+}
+
+.trait-group.collapsed .trait-group-content { display: none; }
+.trait-group.collapsed .chevron { transform: rotate(-90deg); }
+
+.trait-group-content {
+  padding: 0 14px 10px;
+}
+
+/* Trait Category */
+.trait-category {
+  margin-bottom: 8px;
+}
+
+.trait-category-label {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.trait-category-label .clear-btn {
+  font-size: 9px;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+.trait-category-label .clear-btn:hover { color: var(--accent-red); background: rgba(196,90,90,0.15); }
+
+/* Single-select tags */
+.tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+
+.tag {
+  padding: 3px 8px;
+  border-radius: 3px;
+  background: var(--bg-secondary);
+  color: var(--text-dim);
+  font-size: 11px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all var(--transition);
+  white-space: nowrap;
+}
+
+.tag:hover { border-color: var(--border-light); color: var(--text); }
+.tag.active { border-color: var(--gold); color: var(--gold); background: var(--gold-glow); }
+
+/* Multi-select tags */
+.tag.multi-active {
+  border-color: var(--accent-blue);
+  color: var(--accent-blue);
+  background: rgba(74,144,196,0.15);
+}
+
+/* Custom input inline */
+.custom-input-row {
+  margin-top: 4px;
+}
+
+.custom-input {
+  width: 100%;
+  font-family: var(--font);
+  font-size: 11px;
+  padding: 4px 8px;
+  background: var(--bg-input);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  outline: none;
+}
+.custom-input:focus { border-color: var(--gold-dim); }
+.custom-input::placeholder { color: var(--text-muted); }
+
+/* ─── Center Panel ──────────────────────────────────────────────────── */
+.center-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg-deep);
+}
+
+/* Prompt bar */
+.prompt-area {
+  padding: 14px 20px;
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.prompt-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.prompt-input {
+  flex: 1;
+  font-family: var(--font);
+  font-size: 13px;
+  padding: 10px 14px;
+  background: var(--bg-input);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  outline: none;
+  resize: none;
+}
+.prompt-input:focus { border-color: var(--gold-dim); }
+.prompt-input::placeholder { color: var(--text-muted); }
+
+.generate-btn {
+  padding: 10px 24px;
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+  letter-spacing: 0.5px;
+}
+
+.model-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.model-row label { white-space: nowrap; }
+
+/* Image display */
+.image-area {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
+  padding: 20px;
+}
+
+.image-container {
+  position: relative;
+  max-width: 100%;
+  max-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.image-container img {
+  max-width: 100%;
+  max-height: calc(100vh - 220px);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  cursor: pointer;
+  transition: transform 200ms ease;
+}
+
+.image-container img:hover { transform: scale(1.01); }
+
+.image-placeholder {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 40px;
+}
+
+.image-placeholder .icon { font-size: 64px; opacity: 0.3; margin-bottom: 16px; }
+.image-placeholder p { font-size: 14px; margin-bottom: 4px; }
+.image-placeholder .hint { font-size: 11px; }
+
+/* Loading overlay */
+.loading-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(13,11,10,0.85);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
+  border-radius: var(--radius-lg);
+}
+
+.loading-overlay.active { display: flex; }
+
+.spinner {
+  width: 48px;
+  height: 48px;
+  border: 3px solid var(--border);
+  border-top-color: var(--gold);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.loading-text {
+  color: var(--gold);
+  font-size: 13px;
+  margin-top: 12px;
+  text-align: center;
+}
+
+/* Prompt preview */
+.prompt-preview {
+  padding: 10px 20px;
+  background: var(--bg-primary);
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+  max-height: 140px;
+  overflow: hidden;
+  transition: max-height 200ms ease;
+}
+
+.prompt-preview.collapsed { max-height: 32px; }
+
+.prompt-preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  margin-bottom: 6px;
+}
+
+.prompt-preview-header h3 {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+}
+
+.prompt-preview-text {
+  font-size: 11px;
+  color: var(--text-dim);
+  line-height: 1.5;
+  overflow-y: auto;
+  max-height: 90px;
+  word-break: break-word;
+}
+
+/* Error toast */
+.error-toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  background: var(--accent-red);
+  color: white;
+  padding: 10px 20px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  z-index: 100;
+  box-shadow: var(--shadow-lg);
+  transition: transform 300ms ease;
+  max-width: 500px;
+}
+
+.error-toast.visible { transform: translateX(-50%) translateY(0); }
+
+/* ─── Right Panel: Gallery ──────────────────────────────────────────── */
+.gallery-panel {
+  background: var(--bg-primary);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.gallery-header {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.gallery-header h2 {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-dim);
+  font-weight: 600;
+}
+
+.gallery-count {
+  font-size: 10px;
+  color: var(--text-muted);
+  background: var(--bg-secondary);
+  padding: 2px 6px;
+  border-radius: 10px;
+}
+
+.gallery-filters {
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.filter-btn {
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 10px;
+  background: var(--bg-secondary);
+  color: var(--text-muted);
+  border: 1px solid transparent;
+}
+.filter-btn:hover { color: var(--text-dim); }
+.filter-btn.active { border-color: var(--gold-dim); color: var(--gold); }
+
+.gallery-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.gallery-card {
+  position: relative;
+  border-radius: var(--radius);
+  overflow: hidden;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: all var(--transition);
+  background: var(--bg-card);
+}
+
+.gallery-card:hover { border-color: var(--border-light); }
+.gallery-card.selected { border-color: var(--gold); }
+
+.gallery-card img {
+  width: 100%;
+  aspect-ratio: 2/3;
+  object-fit: cover;
+  display: block;
+}
+
+.gallery-card-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 4px 6px;
+  background: linear-gradient(transparent, rgba(0,0,0,0.8));
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+
+.gallery-card-model {
+  font-size: 8px;
+  color: var(--text-dim);
+  background: rgba(0,0,0,0.5);
+  padding: 1px 4px;
+  border-radius: 2px;
+  text-transform: uppercase;
+}
+
+.gallery-card .fav-star {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 22px;
+  height: 22px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.5);
+  border-radius: 50%;
+  color: var(--text-muted);
+  opacity: 0;
+  transition: opacity var(--transition);
+}
+.gallery-card:hover .fav-star { opacity: 1; }
+.gallery-card .fav-star.active { opacity: 1; color: var(--gold); }
+
+.gallery-empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+/* ─── Lightbox ──────────────────────────────────────────────────────── */
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(0,0,0,0.92);
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+.lightbox.active { display: flex; }
+
+.lightbox-content {
+  display: flex;
+  max-width: 95vw;
+  max-height: 95vh;
+  gap: 20px;
+  position: relative;
+}
+
+.lightbox-image {
+  max-height: 90vh;
+  max-width: 60vw;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+}
+
+.lightbox-sidebar {
+  width: 320px;
+  background: var(--bg-primary);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  overflow-y: auto;
+  max-height: 90vh;
+  flex-shrink: 0;
+}
+
+.lightbox-sidebar h3 {
+  font-size: 14px;
+  color: var(--gold);
+  margin-bottom: 12px;
+}
+
+.lightbox-traits {
+  margin-bottom: 16px;
+}
+
+.lightbox-trait {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+}
+
+.lightbox-trait .label { color: var(--text-muted); }
+.lightbox-trait .value { color: var(--text); text-align: right; max-width: 180px; }
+
+.lightbox-prompt {
+  font-size: 11px;
+  color: var(--text-dim);
+  background: var(--bg-input);
+  padding: 10px;
+  border-radius: var(--radius);
+  line-height: 1.5;
+  word-break: break-word;
+  margin-bottom: 12px;
+}
+
+.lightbox-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.lightbox-close {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.1);
+  color: white;
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: none;
+  z-index: 51;
+}
+.lightbox-close:hover { background: rgba(255,255,255,0.2); }
+
+.lightbox-nav {
+  position: fixed;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 40px;
+  height: 60px;
+  background: rgba(255,255,255,0.08);
+  color: white;
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: none;
+  border-radius: var(--radius);
+  z-index: 51;
+}
+.lightbox-nav:hover { background: rgba(255,255,255,0.15); }
+.lightbox-nav.prev { left: 12px; }
+.lightbox-nav.next { right: 12px; }
+
+/* ─── Keyboard hint ─────────────────────────────────────────────────── */
+.kbd {
+  display: inline-block;
+  padding: 1px 5px;
+  font-size: 10px;
+  font-family: monospace;
+  color: var(--text-muted);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+}
+
+/* ─── Responsive (hide gallery panel on smaller screens) ────────────── */
+@media (max-width: 1100px) {
+  .main-content { grid-template-columns: 320px 1fr; }
+  .gallery-panel { display: none; }
+}
+
+@media (max-width: 700px) {
+  .main-content { grid-template-columns: 1fr; }
+  .trait-panel { display: none; }
+}
+
+/* ─── Animations ────────────────────────────────────────────────────── */
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+.fade-in { animation: fadeIn 300ms ease; }
+.slide-up { animation: slideUp 300ms ease; }
+
+/* ─── Compare mode ──────────────────────────────────────────────────── */
+.compare-bar {
+  display: none;
+  padding: 8px 20px;
+  background: var(--accent-blue);
+  color: white;
+  font-size: 12px;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.compare-bar.active { display: flex; }
+.compare-bar button { background: rgba(255,255,255,0.2); color: white; }
+
+.compare-view {
+  display: none;
+  flex: 1;
+  overflow: hidden;
+}
+.compare-view.active { display: flex; gap: 4px; padding: 20px; align-items: center; justify-content: center; }
+.compare-view img {
+  max-height: calc(100vh - 220px);
+  max-width: 48%;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+}
+
+/* ─── Export card canvas (hidden) ───────────────────────────────────── */
+#export-canvas { display: none; }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <header>
+    <div class="logo">NPC FORGE <span>Character Generator</span></div>
+    <div class="header-controls">
+      <button class="btn btn-outline btn-sm" id="randomize-btn" title="Randomize all traits (R)">
+        🎲 Randomize
+      </button>
+      <button class="btn btn-outline btn-sm" id="clear-btn" title="Clear all selections">
+        ✕ Clear
+      </button>
+      <button class="btn btn-outline btn-sm" id="compare-btn" title="Compare two images">
+        ⇔ Compare
+      </button>
+      <div style="margin-left: 8px; display: flex; gap: 4px; align-items: center;">
+        <span class="kbd">R</span><span style="font-size:10px;color:var(--text-muted)">random</span>
+        <span class="kbd" style="margin-left:6px">G</span><span style="font-size:10px;color:var(--text-muted)">generate</span>
+        <span class="kbd" style="margin-left:6px">Esc</span><span style="font-size:10px;color:var(--text-muted)">close</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="main-content">
+    <!-- Left: Trait Builder -->
+    <div class="trait-panel">
+      <div class="trait-panel-header">
+        <h2>Character Traits</h2>
+      </div>
+      <div class="trait-scroll" id="trait-scroll">
+        <!-- Genre selector -->
+        <div class="genre-section">
+          <h3>Genre</h3>
+          <div class="genre-grid" id="genre-grid"></div>
+          <div class="genre-desc" id="genre-desc"></div>
+        </div>
+        <!-- Archetypes -->
+        <div class="archetype-section">
+          <h3>Quick Start — Archetypes</h3>
+          <div class="archetype-grid" id="archetype-grid"></div>
+        </div>
+        <!-- Trait groups rendered by JS -->
+        <div id="trait-groups"></div>
+      </div>
+    </div>
+
+    <!-- Center: Prompt + Image -->
+    <div class="center-panel">
+      <div class="prompt-area">
+        <div class="prompt-row">
+          <textarea class="prompt-input" id="custom-prompt" rows="2"
+            placeholder="Describe your NPC... (optional — traits build the prompt automatically)"></textarea>
+          <button class="btn btn-gold generate-btn" id="generate-btn">
+            ⚡ Generate
+          </button>
+        </div>
+        <div class="model-row">
+          <label>Model:</label>
+          <select id="model-select"></select>
+          <label id="quality-label" style="display:none;">Quality:</label>
+          <select id="quality-select" style="display:none;"></select>
+          <span style="flex:1"></span>
+          <span id="trait-count" style="font-size:10px;color:var(--text-muted);">0 traits selected</span>
+        </div>
+      </div>
+
+      <div class="compare-bar" id="compare-bar">
+        <span>Compare mode — select 2 images from gallery</span>
+        <span style="flex:1"></span>
+        <button class="btn btn-sm" id="compare-cancel">Cancel</button>
+      </div>
+
+      <div class="image-area" id="image-area">
+        <div class="loading-overlay" id="loading">
+          <div style="text-align:center">
+            <div class="spinner"></div>
+            <div class="loading-text">Forging character...</div>
+          </div>
+        </div>
+        <div class="image-container" id="image-container">
+          <div class="image-placeholder" id="placeholder">
+            <div class="icon">⚒️</div>
+            <p>No character yet</p>
+            <p class="hint">Select traits and hit Generate, or try an Archetype + Randomize</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="compare-view" id="compare-view"></div>
+
+      <div class="prompt-preview collapsed" id="prompt-preview">
+        <div class="prompt-preview-header" id="prompt-preview-toggle">
+          <h3>Full Prompt Preview</h3>
+          <span class="chevron">▼</span>
+        </div>
+        <div class="prompt-preview-text" id="prompt-preview-text">—</div>
+      </div>
+    </div>
+
+    <!-- Right: Gallery -->
+    <div class="gallery-panel">
+      <div class="gallery-header">
+        <h2>Gallery</h2>
+        <span class="gallery-count" id="gallery-count">0</span>
+      </div>
+      <div class="gallery-filters">
+        <button class="filter-btn active" data-filter="all">All</button>
+        <button class="filter-btn" data-filter="favorites">★ Favorites</button>
+      </div>
+      <div class="gallery-scroll">
+        <div class="gallery-grid" id="gallery-grid"></div>
+        <div class="gallery-empty" id="gallery-empty">
+          Generated characters will appear here
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Lightbox -->
+<div class="lightbox" id="lightbox">
+  <button class="lightbox-close" id="lightbox-close">✕</button>
+  <button class="lightbox-nav prev" id="lightbox-prev">‹</button>
+  <button class="lightbox-nav next" id="lightbox-next">›</button>
+  <div class="lightbox-content">
+    <img class="lightbox-image" id="lightbox-img" src="" alt="">
+    <div class="lightbox-sidebar" id="lightbox-sidebar"></div>
+  </div>
+</div>
+
+<!-- Error toast -->
+<div class="error-toast" id="error-toast"></div>
+
+<!-- Export canvas -->
+<canvas id="export-canvas"></canvas>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════
+// NPC Forge — Client
+// ═══════════════════════════════════════════════════════════════════════
+
+const $ = s => document.querySelector(s);
+const $$ = s => document.querySelectorAll(s);
+
+// ─── State ─────────────────────────────────────────────────────────────
+let traitData = { traits: {}, order: [], groups: [], archetypes: [], genres: [] };
+let models = [];
+let gallery = [];
+let selections = {};      // { traitKey: 'optionId' | ['id1', 'id2'] }
+let customInputs = {};    // { traitKey: 'custom text' }
+let currentImage = null;  // { id, url, meta }
+let lightboxIndex = -1;
+let compareMode = false;
+let compareImages = [];
+let galleryFilter = 'all';
+let generating = false;
+let selectedGenre = null;  // current genre filter
+
+// ─── Init ──────────────────────────────────────────────────────────────
+async function init() {
+  const [traitsResp, modelsResp, galleryResp] = await Promise.all([
+    fetch('/api/traits').then(r => r.json()),
+    fetch('/api/models').then(r => r.json()),
+    fetch('/api/gallery').then(r => r.json())
+  ]);
+
+  traitData = traitsResp;
+  models = modelsResp;
+  gallery = galleryResp;
+
+  renderGenres();
+  renderArchetypes();
+  renderTraitGroups();
+  renderModels();
+  renderGallery();
+  updatePromptPreview();
+
+  // Show latest image if gallery has items (restore its selections too)
+  if (gallery.length > 0) {
+    showImage(0, true);
+  }
+
+  bindEvents();
+}
+
+// ─── Render Genres ─────────────────────────────────────────────────────
+function renderGenres() {
+  const grid = $('#genre-grid');
+  grid.innerHTML = traitData.genres.map(g => `
+    <button class="genre-btn" data-id="${g.id}" title="${g.description}">
+      <span>${g.icon}</span> ${g.label}
+    </button>
+  `).join('');
+}
+
+function selectGenre(genreId) {
+  // Toggle: click same genre to deselect
+  if (selectedGenre === genreId) {
+    selectedGenre = null;
+  } else {
+    selectedGenre = genreId;
+  }
+
+  // Update genre button UI
+  $$('.genre-btn').forEach(b => b.classList.toggle('active', b.dataset.id === selectedGenre));
+
+  // Update description
+  const desc = $('#genre-desc');
+  const genre = traitData.genres.find(g => g.id === selectedGenre);
+  desc.textContent = genre ? genre.description : '';
+
+  // Clear selections that are no longer visible
+  pruneHiddenSelections();
+
+  // Re-filter archetypes and tags
+  filterByGenre();
+  updatePromptPreview();
+
+  // Deselect archetype if it doesn't match genre
+  $$('.archetype-btn.active').forEach(b => {
+    const arch = traitData.archetypes.find(a => a.id === b.dataset.id);
+    if (arch && selectedGenre && arch.genre !== selectedGenre) {
+      b.classList.remove('active');
+    }
+  });
+}
+
+function filterByGenre() {
+  // Filter archetype buttons
+  $$('.archetype-btn').forEach(btn => {
+    const arch = traitData.archetypes.find(a => a.id === btn.dataset.id);
+    if (!arch) return;
+    const hidden = selectedGenre && arch.genre !== selectedGenre;
+    btn.classList.toggle('genre-hidden', hidden);
+  });
+
+  // Filter trait tags
+  $$('.tag').forEach(tag => {
+    const traitKey = tag.dataset.trait;
+    const optId = tag.dataset.option;
+    const trait = traitData.traits[traitKey];
+    if (!trait) return;
+
+    const opt = trait.options.find(o => o.id === optId);
+    if (!opt) return;
+
+    // Show if: no genres field (universal) OR genre matches OR no genre selected
+    const optGenres = opt.genres;
+    const hidden = selectedGenre && optGenres && !optGenres.includes(selectedGenre);
+    tag.classList.toggle('genre-hidden', hidden);
+  });
+}
+
+function pruneHiddenSelections() {
+  if (!selectedGenre) return;
+
+  for (const [key, val] of Object.entries(selections)) {
+    const trait = traitData.traits[key];
+    if (!trait) continue;
+
+    if (trait.type === 'single') {
+      const opt = trait.options.find(o => o.id === val);
+      if (opt?.genres && !opt.genres.includes(selectedGenre)) {
+        delete selections[key];
+      }
+    } else if (Array.isArray(val)) {
+      selections[key] = val.filter(id => {
+        const opt = trait.options.find(o => o.id === id);
+        return !opt?.genres || opt.genres.includes(selectedGenre);
+      });
+      if (selections[key].length === 0) delete selections[key];
+    }
+  }
+  updateTagUI();
+  updateTraitCount();
+}
+
+// ─── Render Archetypes ─────────────────────────────────────────────────
+function renderArchetypes() {
+  const grid = $('#archetype-grid');
+  grid.innerHTML = traitData.archetypes.map(a => `
+    <button class="archetype-btn" data-id="${a.id}" title="${a.description}">
+      <span>${a.icon}</span> ${a.label}
+    </button>
+  `).join('');
+}
+
+// ─── Render Trait Groups ───────────────────────────────────────────────
+function renderTraitGroups() {
+  const container = $('#trait-groups');
+  let html = '';
+
+  for (const groupName of traitData.groups) {
+    const groupTraits = traitData.order.filter(key => traitData.traits[key]?.group === groupName);
+    if (!groupTraits.length) continue;
+
+    html += `<div class="trait-group" data-group="${groupName}">
+      <div class="trait-group-header">
+        <span>${groupName}</span>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="trait-group-content">`;
+
+    for (const key of groupTraits) {
+      const trait = traitData.traits[key];
+      html += renderTraitCategory(key, trait);
+    }
+
+    html += `</div></div>`;
+  }
+
+  container.innerHTML = html;
+}
+
+function renderTraitCategory(key, trait) {
+  const isMulti = trait.type === 'multi';
+
+  let tagsHtml = trait.options.map(opt => {
+    const activeClass = isMulti ? 'multi-active' : 'active';
+    return `<button class="tag" data-trait="${key}" data-option="${opt.id}"
+      data-type="${trait.type}">${opt.label}</button>`;
+  }).join('');
+
+  let customHtml = '';
+  if (trait.allowCustom) {
+    const placeholder = isMulti ? 'Add custom...' : 'Custom species...';
+    customHtml = `<div class="custom-input-row">
+      <input type="text" class="custom-input" data-trait="${key}"
+        placeholder="${placeholder}">
+    </div>`;
+  }
+
+  return `<div class="trait-category" data-key="${key}">
+    <div class="trait-category-label">
+      <span>${trait.label}</span>
+      <span class="clear-btn" data-trait="${key}" title="Clear">✕</span>
+    </div>
+    <div class="tag-row">${tagsHtml}</div>
+    ${customHtml}
+  </div>`;
+}
+
+// ─── Render Models ─────────────────────────────────────────────────────
+function renderModels() {
+  const sel = $('#model-select');
+  sel.innerHTML = models.map(m => `<option value="${m.id}">${m.label}</option>`).join('');
+  updateQualitySelect();
+}
+
+function updateQualitySelect() {
+  const model = models.find(m => m.id === $('#model-select').value);
+  const qSel = $('#quality-select');
+  const qLabel = $('#quality-label');
+
+  if (model?.qualities?.length > 0) {
+    qSel.innerHTML = model.qualities.map(q =>
+      `<option value="${q}" ${q === model.defaultQuality ? 'selected' : ''}>${q}</option>`
+    ).join('');
+    qSel.style.display = '';
+    qLabel.style.display = '';
+  } else {
+    qSel.style.display = 'none';
+    qLabel.style.display = 'none';
+  }
+}
+
+// ─── Render Gallery ────────────────────────────────────────────────────
+function renderGallery() {
+  const grid = $('#gallery-grid');
+  const empty = $('#gallery-empty');
+  const count = $('#gallery-count');
+
+  const filtered = galleryFilter === 'favorites'
+    ? gallery.filter(img => img.meta?.favorite)
+    : gallery;
+
+  count.textContent = filtered.length;
+
+  if (filtered.length === 0) {
+    grid.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+
+  empty.style.display = 'none';
+  grid.innerHTML = filtered.map((img, i) => {
+    const modelLabel = getShortModelLabel(img.meta?.model);
+    const isFav = img.meta?.favorite;
+    const isSelected = currentImage?.id === img.id;
+    return `<div class="gallery-card ${isSelected ? 'selected' : ''}" data-index="${gallery.indexOf(img)}">
+      <img src="${img.url}" alt="NPC" loading="lazy">
+      <div class="gallery-card-overlay">
+        <span class="gallery-card-model">${modelLabel}</span>
+      </div>
+      <button class="fav-star ${isFav ? 'active' : ''}" data-id="${img.id}" title="Toggle favorite">
+        ${isFav ? '★' : '☆'}
+      </button>
+    </div>`;
+  }).join('');
+}
+
+function getShortModelLabel(model) {
+  if (!model) return '?';
+  if (model.includes('gpt')) return 'GPT';
+  if (model.includes('grok')) return 'Grok';
+  if (model.includes('gemini')) return 'Gemini';
+  return model.slice(0, 6);
+}
+
+// ─── Tag Selection Logic ───────────────────────────────────────────────
+function selectTag(traitKey, optionId) {
+  const trait = traitData.traits[traitKey];
+  if (!trait) return;
+
+  if (trait.type === 'single') {
+    // Toggle: click again to deselect
+    if (selections[traitKey] === optionId) {
+      delete selections[traitKey];
+    } else {
+      selections[traitKey] = optionId;
+    }
+  } else {
+    // Multi-select toggle
+    if (!Array.isArray(selections[traitKey])) selections[traitKey] = [];
+    const arr = selections[traitKey];
+    const idx = arr.indexOf(optionId);
+    if (idx >= 0) arr.splice(idx, 1);
+    else arr.push(optionId);
+    if (arr.length === 0) delete selections[traitKey];
+  }
+
+  updateTagUI();
+  updatePromptPreview();
+  updateTraitCount();
+}
+
+function clearTrait(traitKey) {
+  delete selections[traitKey];
+  delete customInputs[traitKey];
+  const inp = document.querySelector(`.custom-input[data-trait="${traitKey}"]`);
+  if (inp) inp.value = '';
+  updateTagUI();
+  updatePromptPreview();
+  updateTraitCount();
+}
+
+function clearAll() {
+  selections = {};
+  customInputs = {};
+  selectedGenre = null;
+  $$('.custom-input').forEach(inp => inp.value = '');
+  $$('.archetype-btn').forEach(b => b.classList.remove('active'));
+  $$('.genre-btn').forEach(b => b.classList.remove('active'));
+  $('#genre-desc').textContent = '';
+  filterByGenre();
+  updateTagUI();
+  updatePromptPreview();
+  updateTraitCount();
+}
+
+function updateTagUI() {
+  $$('.tag').forEach(tag => {
+    const key = tag.dataset.trait;
+    const opt = tag.dataset.option;
+    const type = tag.dataset.type;
+
+    if (type === 'multi') {
+      const arr = selections[key] || [];
+      tag.classList.toggle('multi-active', arr.includes(opt));
+    } else {
+      tag.classList.toggle('active', selections[key] === opt);
+    }
+  });
+}
+
+function updateTraitCount() {
+  let count = 0;
+  for (const [key, val] of Object.entries(selections)) {
+    if (Array.isArray(val)) count += val.length;
+    else count++;
+  }
+  for (const val of Object.values(customInputs)) {
+    if (val?.trim()) count++;
+  }
+  $('#trait-count').textContent = `${count} trait${count !== 1 ? 's' : ''} selected`;
+}
+
+// ─── Archetype Application ─────────────────────────────────────────────
+function applyArchetype(archetypeId) {
+  const arch = traitData.archetypes.find(a => a.id === archetypeId);
+  if (!arch) return;
+
+  // Toggle: if already active, deselect
+  const btn = document.querySelector(`.archetype-btn[data-id="${archetypeId}"]`);
+  const wasActive = btn?.classList.contains('active');
+
+  $$('.archetype-btn').forEach(b => b.classList.remove('active'));
+
+  if (wasActive) {
+    // Just deselect, don't clear
+    return;
+  }
+
+  btn?.classList.add('active');
+
+  // Switch genre to match archetype if different
+  if (arch.genre && arch.genre !== selectedGenre) {
+    selectedGenre = arch.genre;
+    $$('.genre-btn').forEach(b => b.classList.toggle('active', b.dataset.id === selectedGenre));
+    const genre = traitData.genres.find(g => g.id === selectedGenre);
+    $('#genre-desc').textContent = genre ? genre.description : '';
+    filterByGenre();
+  }
+
+  // Apply defaults (don't clear unrelated selections)
+  for (const [key, val] of Object.entries(arch.defaults)) {
+    if (Array.isArray(val)) {
+      selections[key] = [...val];
+    } else {
+      selections[key] = val;
+    }
+  }
+
+  updateTagUI();
+  updatePromptPreview();
+  updateTraitCount();
+}
+
+// ─── Randomize ─────────────────────────────────────────────────────────
+function randomize() {
+  // Filter archetypes by current genre, or use all if no genre
+  let availableArchetypes = traitData.archetypes;
+  if (selectedGenre) {
+    availableArchetypes = availableArchetypes.filter(a => a.genre === selectedGenre);
+  }
+  // If no archetypes for this genre (shouldn't happen), fall back to all
+  if (availableArchetypes.length === 0) availableArchetypes = traitData.archetypes;
+
+  // Pick a random archetype for coherence
+  const arch = availableArchetypes[Math.floor(Math.random() * availableArchetypes.length)];
+
+  // Switch genre to match if needed
+  if (arch.genre && arch.genre !== selectedGenre) {
+    selectedGenre = arch.genre;
+    $$('.genre-btn').forEach(b => b.classList.toggle('active', b.dataset.id === selectedGenre));
+    const genre = traitData.genres.find(g => g.id === selectedGenre);
+    $('#genre-desc').textContent = genre ? genre.description : '';
+    filterByGenre();
+  }
+
+  // Start with archetype defaults
+  selections = {};
+  if (arch.defaults) {
+    for (const [key, val] of Object.entries(arch.defaults)) {
+      selections[key] = Array.isArray(val) ? [...val] : val;
+    }
+  }
+
+  // Fill in remaining single-select traits randomly (only from visible options)
+  for (const key of traitData.order) {
+    if (selections[key] !== undefined) continue;
+    const trait = traitData.traits[key];
+    if (!trait) continue;
+
+    // Filter options to genre-compatible ones
+    const visibleOpts = trait.options.filter(o =>
+      !o.genres || !selectedGenre || o.genres.includes(selectedGenre)
+    );
+    if (visibleOpts.length === 0) continue;
+
+    if (trait.type === 'single') {
+      const essential = ['species', 'age', 'gender', 'build', 'expression', 'pose', 'shot', 'art_style', 'lighting', 'background'];
+      if (essential.includes(key) || Math.random() > 0.2) {
+        selections[key] = visibleOpts[Math.floor(Math.random() * visibleOpts.length)].id;
+      }
+    } else if (trait.type === 'multi') {
+      if (Math.random() > 0.6) {
+        const count = Math.floor(Math.random() * 3) + 1;
+        const shuffled = [...visibleOpts].sort(() => Math.random() - 0.5);
+        selections[key] = shuffled.slice(0, count).map(o => o.id);
+      }
+    }
+  }
+
+  // Update archetype buttons
+  $$('.archetype-btn').forEach(b => b.classList.remove('active'));
+  const archBtn = document.querySelector(`.archetype-btn[data-id="${arch.id}"]`);
+  if (archBtn) archBtn.classList.add('active');
+
+  customInputs = {};
+  $$('.custom-input').forEach(inp => inp.value = '');
+
+  updateTagUI();
+  updatePromptPreview();
+  updateTraitCount();
+}
+
+// ─── Prompt Building ───────────────────────────────────────────────────
+function buildPromptParts() {
+  const parts = ['1 person, solo, single subject, alone'];
+
+  // Add genre context
+  if (selectedGenre) {
+    const genre = traitData.genres.find(g => g.id === selectedGenre);
+    if (genre) parts.push(genre.promptPrefix);
+  }
+
+  for (const key of traitData.order) {
+    const trait = traitData.traits[key];
+    if (!trait) continue;
+
+    if (trait.type === 'single') {
+      const selectedId = selections[key];
+      if (!selectedId) continue;
+
+      if (customInputs[key]?.trim()) {
+        parts.push(customInputs[key].trim());
+      } else {
+        const opt = trait.options.find(o => o.id === selectedId);
+        if (opt) parts.push(opt.prompt);
+      }
+    } else if (trait.type === 'multi') {
+      const ids = selections[key] || [];
+      for (const id of ids) {
+        const opt = trait.options.find(o => o.id === id);
+        if (opt) parts.push(opt.prompt);
+      }
+      if (customInputs[key]?.trim()) {
+        parts.push(customInputs[key].trim());
+      }
+    }
+  }
+
+  const customPrompt = $('#custom-prompt').value.trim();
+  if (customPrompt) parts.push(customPrompt);
+
+  return parts;
+}
+
+function updatePromptPreview() {
+  const parts = buildPromptParts();
+  $('#prompt-preview-text').textContent = parts.join(', ');
+}
+
+// ─── Generate ──────────────────────────────────────────────────────────
+async function generate() {
+  if (generating) return;
+
+  const model = $('#model-select').value;
+  if (!model) { showError('No model selected'); return; }
+
+  generating = true;
+  $('#generate-btn').disabled = true;
+  $('#loading').classList.add('active');
+
+  try {
+    const body = {
+      selections: { ...selections },
+      customInputs: { ...customInputs },
+      customPrompt: $('#custom-prompt').value.trim(),
+      model,
+      quality: $('#quality-select').value || undefined,
+      genre: selectedGenre || undefined
+    };
+
+    const resp = await fetch('/api/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || 'Generation failed');
+
+    // Add to gallery
+    const imgEntry = { id: data.id, url: data.url, created: data.created, meta: data };
+    gallery.unshift(imgEntry);
+    showImage(0, false); // show new image but don't re-apply selections (they're already set)
+    renderGallery();
+  } catch (err) {
+    showError(err.message);
+  } finally {
+    generating = false;
+    $('#generate-btn').disabled = false;
+    $('#loading').classList.remove('active');
+  }
+}
+
+// ─── Show Image ────────────────────────────────────────────────────────
+function showImage(indexOrEntry, restoreSelections = true) {
+  // Accept either an index or an entry object
+  let idx;
+  if (typeof indexOrEntry === 'number') {
+    idx = indexOrEntry;
+  } else {
+    idx = gallery.indexOf(indexOrEntry);
+    if (idx === -1) {
+      // Freshly pushed entry — find by id
+      idx = gallery.findIndex(g => g.id === indexOrEntry.id);
+    }
+  }
+  if (idx < 0 || idx >= gallery.length) return;
+
+  const imgEntry = gallery[idx];
+  currentImage = imgEntry;
+  const container = $('#image-container');
+  container.innerHTML = `<img src="${imgEntry.url}" alt="Generated NPC" class="fade-in"
+    onclick="openLightbox(${idx})">`;
+  renderGallery(); // update selected state
+
+  // Restore selections and prompt from this image's metadata
+  if (restoreSelections && imgEntry.meta) {
+    restoreFromMeta(imgEntry.meta);
+  }
+}
+
+// Shared logic: restore all UI state from a metadata object
+function restoreFromMeta(meta) {
+  selections = {};
+  customInputs = {};
+
+  if (meta.selections) {
+    for (const [key, val] of Object.entries(meta.selections)) {
+      selections[key] = Array.isArray(val) ? [...val] : val;
+    }
+  }
+  if (meta.customInputs) {
+    for (const [key, val] of Object.entries(meta.customInputs)) {
+      customInputs[key] = val;
+    }
+  }
+
+  // Restore genre (or clear it)
+  selectedGenre = meta.genre || null;
+  $$('.genre-btn').forEach(b => b.classList.toggle('active', b.dataset.id === selectedGenre));
+  const genre = traitData.genres.find(g => g.id === selectedGenre);
+  $('#genre-desc').textContent = genre ? genre.description : '';
+  filterByGenre();
+
+  // Restore prompt textarea
+  $('#custom-prompt').value = meta.customPrompt || '';
+
+  // Restore model/quality
+  if (meta.model) {
+    $('#model-select').value = meta.model;
+    updateQualitySelect();
+    if (meta.quality) $('#quality-select').value = meta.quality;
+  }
+
+  // Restore custom input fields in DOM
+  $$('.custom-input').forEach(inp => {
+    inp.value = customInputs[inp.dataset.trait] || '';
+  });
+
+  updateTagUI();
+  updatePromptPreview();
+  updateTraitCount();
+}
+
+// ─── Lightbox ──────────────────────────────────────────────────────────
+function openLightbox(index) {
+  if (index < 0 || index >= gallery.length) return;
+  lightboxIndex = index;
+  const img = gallery[index];
+
+  $('#lightbox-img').src = img.url;
+  renderLightboxSidebar(img);
+  $('#lightbox').classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeLightbox() {
+  $('#lightbox').classList.remove('active');
+  document.body.style.overflow = '';
+}
+
+function navLightbox(dir) {
+  const newIdx = lightboxIndex + dir;
+  if (newIdx >= 0 && newIdx < gallery.length) {
+    openLightbox(newIdx);
+  }
+}
+
+function renderLightboxSidebar(img) {
+  const meta = img.meta;
+  const sidebar = $('#lightbox-sidebar');
+
+  let traitsHtml = '';
+  if (meta?.selections) {
+    for (const key of traitData.order) {
+      const trait = traitData.traits[key];
+      if (!trait) continue;
+      const val = meta.selections[key];
+      if (!val || (Array.isArray(val) && val.length === 0)) continue;
+
+      let displayVal;
+      if (trait.type === 'single') {
+        const opt = trait.options.find(o => o.id === val);
+        displayVal = opt?.label || val;
+      } else {
+        displayVal = val.map(v => {
+          const opt = trait.options.find(o => o.id === v);
+          return opt?.label || v;
+        }).join(', ');
+      }
+
+      traitsHtml += `<div class="lightbox-trait">
+        <span class="label">${trait.label}</span>
+        <span class="value">${displayVal}</span>
+      </div>`;
+    }
+  }
+
+  const modelLabel = models.find(m => m.id === meta?.model)?.label || meta?.model || '?';
+
+  sidebar.innerHTML = `
+    <h3>Character Details</h3>
+    <div class="lightbox-traits">${traitsHtml || '<div style="color:var(--text-muted);font-size:12px">No trait data</div>'}</div>
+    ${meta?.customPrompt ? `<div style="margin-bottom:8px"><span style="font-size:10px;color:var(--text-muted);text-transform:uppercase">Custom Prompt</span>
+      <div class="lightbox-prompt">${escHtml(meta.customPrompt)}</div></div>` : ''}
+    <div style="margin-bottom:12px">
+      <span style="font-size:10px;color:var(--text-muted);text-transform:uppercase">Full Prompt</span>
+      <div class="lightbox-prompt">${escHtml(meta?.fullPrompt || '—')}</div>
+    </div>
+    <div style="font-size:11px;color:var(--text-muted);margin-bottom:12px">
+      ${meta?.genre ? `Genre: <strong style="color:var(--text-dim)">${traitData.genres.find(g=>g.id===meta.genre)?.label || meta.genre}</strong> · ` : ''}Model: <strong style="color:var(--text-dim)">${modelLabel}</strong>
+      ${meta?.quality ? ` · Quality: <strong style="color:var(--text-dim)">${meta.quality}</strong>` : ''}
+      ${meta?.created ? `<br>Created: ${new Date(meta.created).toLocaleString()}` : ''}
+    </div>
+    <div class="lightbox-actions">
+      <button class="btn btn-gold btn-sm" onclick="applyFromImage(${gallery.indexOf(img)})">↩ Apply Traits</button>
+      <button class="btn btn-outline btn-sm" onclick="createVariation(${gallery.indexOf(img)})">⚡ Variation</button>
+      <button class="btn btn-outline btn-sm" onclick="exportCard(${gallery.indexOf(img)})">📥 Export Card</button>
+      <button class="btn btn-outline btn-sm" onclick="downloadImage(${gallery.indexOf(img)})">💾 Download</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteImage(${gallery.indexOf(img)})">🗑 Delete</button>
+    </div>
+  `;
+}
+
+// ─── Apply Traits From Image ───────────────────────────────────────────
+function applyFromImage(index) {
+  const img = gallery[index];
+  if (!img?.meta) return;
+  restoreFromMeta(img.meta);
+  closeLightbox();
+}
+
+// ─── Create Variation ──────────────────────────────────────────────────
+function createVariation(index) {
+  applyFromImage(index);
+
+  // Slightly randomize a few traits for variation
+  const mutableTraits = ['expression', 'pose', 'lighting', 'background'];
+  const traitToVary = mutableTraits[Math.floor(Math.random() * mutableTraits.length)];
+  const trait = traitData.traits[traitToVary];
+  if (trait) {
+    const opts = trait.options;
+    const current = selections[traitToVary];
+    let newOpt;
+    do {
+      newOpt = opts[Math.floor(Math.random() * opts.length)].id;
+    } while (newOpt === current && opts.length > 1);
+    selections[traitToVary] = newOpt;
+  }
+
+  updateTagUI();
+  updatePromptPreview();
+  updateTraitCount();
+
+  // Don't auto-generate, let user review changes first
+}
+
+// ─── Download Image ────────────────────────────────────────────────────
+function downloadImage(index) {
+  const img = gallery[index];
+  if (!img) return;
+  const a = document.createElement('a');
+  a.href = img.url;
+  a.download = img.id;
+  a.click();
+}
+
+// ─── Delete Image ──────────────────────────────────────────────────────
+async function deleteImage(index) {
+  const img = gallery[index];
+  if (!img) return;
+  if (!confirm('Delete this character?')) return;
+
+  try {
+    await fetch(`/api/gallery/${img.id}`, { method: 'DELETE' });
+    gallery.splice(index, 1);
+    renderGallery();
+
+    if (currentImage?.id === img.id) {
+      currentImage = null;
+      $('#image-container').innerHTML = `
+        <div class="image-placeholder">
+          <div class="icon">⚒️</div>
+          <p>No character yet</p>
+          <p class="hint">Select traits and hit Generate</p>
+        </div>`;
+    }
+
+    closeLightbox();
+  } catch (err) {
+    showError('Failed to delete');
+  }
+}
+
+// ─── Export Card ───────────────────────────────────────────────────────
+async function exportCard(index) {
+  const img = gallery[index];
+  if (!img) return;
+
+  const canvas = $('#export-canvas');
+  const ctx = canvas.getContext('2d');
+
+  const cardW = 600;
+  const cardH = 900;
+  canvas.width = cardW;
+  canvas.height = cardH;
+
+  // Background
+  ctx.fillStyle = '#1a1714';
+  ctx.fillRect(0, 0, cardW, cardH);
+
+  // Border
+  ctx.strokeStyle = '#d4a843';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(6, 6, cardW - 12, cardH - 12);
+
+  // Inner border
+  ctx.strokeStyle = '#332e28';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(14, 14, cardW - 28, cardH - 28);
+
+  // Load and draw image
+  try {
+    const image = new Image();
+    image.crossOrigin = 'anonymous';
+    await new Promise((resolve, reject) => {
+      image.onload = resolve;
+      image.onerror = reject;
+      image.src = img.url;
+    });
+
+    const imgArea = { x: 24, y: 24, w: cardW - 48, h: 500 };
+    ctx.save();
+    ctx.beginPath();
+    ctx.roundRect(imgArea.x, imgArea.y, imgArea.w, imgArea.h, 6);
+    ctx.clip();
+    // Cover fit
+    const scale = Math.max(imgArea.w / image.width, imgArea.h / image.height);
+    const sw = image.width * scale;
+    const sh = image.height * scale;
+    ctx.drawImage(image, imgArea.x + (imgArea.w - sw) / 2, imgArea.y + (imgArea.h - sh) / 2, sw, sh);
+    ctx.restore();
+
+    // Traits section
+    ctx.fillStyle = '#d4a843';
+    ctx.font = 'bold 11px "Segoe UI", sans-serif';
+    ctx.textTransform = 'uppercase';
+
+    let y = 544;
+    const leftX = 30;
+    const rightX = cardW / 2 + 10;
+
+    ctx.fillText('CHARACTER TRAITS', leftX, y);
+    y += 6;
+    ctx.strokeStyle = '#332e28';
+    ctx.beginPath();
+    ctx.moveTo(leftX, y);
+    ctx.lineTo(cardW - 30, y);
+    ctx.stroke();
+    y += 16;
+
+    ctx.font = '12px "Segoe UI", sans-serif';
+
+    const traitPairs = [];
+    if (img.meta?.selections) {
+      for (const key of traitData.order) {
+        const trait = traitData.traits[key];
+        if (!trait) continue;
+        const val = img.meta.selections[key];
+        if (!val || (Array.isArray(val) && val.length === 0)) continue;
+
+        let displayVal;
+        if (trait.type === 'single') {
+          const opt = trait.options.find(o => o.id === val);
+          displayVal = opt?.label || val;
+        } else {
+          displayVal = val.map(v => {
+            const opt = trait.options.find(o => o.id === v);
+            return opt?.label || v;
+          }).join(', ');
+        }
+        traitPairs.push([trait.label, displayVal]);
+      }
+    }
+
+    // Two columns
+    const midIdx = Math.ceil(traitPairs.length / 2);
+    const colPairs = [traitPairs.slice(0, midIdx), traitPairs.slice(midIdx)];
+    const colX = [leftX, rightX];
+
+    for (let col = 0; col < 2; col++) {
+      let cy = y;
+      for (const [label, value] of colPairs[col]) {
+        ctx.fillStyle = '#6b6358';
+        ctx.font = '10px "Segoe UI", sans-serif';
+        ctx.fillText(label, colX[col], cy);
+
+        ctx.fillStyle = '#e8e0d4';
+        ctx.font = '12px "Segoe UI", sans-serif';
+        // Truncate if too long
+        let displayText = value;
+        while (ctx.measureText(displayText).width > (cardW / 2 - 50) && displayText.length > 3) {
+          displayText = displayText.slice(0, -4) + '…';
+        }
+        ctx.fillText(displayText, colX[col], cy + 14);
+        cy += 32;
+      }
+    }
+
+    // Footer
+    ctx.fillStyle = '#332e28';
+    ctx.fillRect(24, cardH - 42, cardW - 48, 1);
+    ctx.fillStyle = '#6b6358';
+    ctx.font = '10px "Segoe UI", sans-serif';
+    const modelLabel = getShortModelLabel(img.meta?.model);
+    ctx.fillText(`NPC Forge · ${modelLabel} · ${new Date(img.meta?.created || Date.now()).toLocaleDateString()}`, leftX, cardH - 22);
+
+  } catch (err) {
+    console.error('Export error:', err);
+  }
+
+  // Download
+  canvas.toBlob(blob => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `npc-card-${img.id}`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, 'image/png');
+}
+
+// ─── Compare Mode ──────────────────────────────────────────────────────
+function toggleCompare() {
+  compareMode = !compareMode;
+  compareImages = [];
+  $('#compare-bar').classList.toggle('active', compareMode);
+  $('#compare-btn').classList.toggle('active', compareMode);
+
+  if (!compareMode) {
+    $('#compare-view').classList.remove('active');
+    $('#compare-view').innerHTML = '';
+    $('#image-area').style.display = '';
+  }
+}
+
+function handleCompareSelect(index) {
+  const img = gallery[index];
+  if (!img) return;
+
+  if (compareImages.some(c => c.id === img.id)) return;
+  compareImages.push(img);
+
+  if (compareImages.length === 2) {
+    showCompare();
+  }
+}
+
+function showCompare() {
+  const view = $('#compare-view');
+  view.innerHTML = compareImages.map(img =>
+    `<img src="${img.url}" alt="Compare">`
+  ).join('');
+  view.classList.add('active');
+  $('#image-area').style.display = 'none';
+}
+
+// ─── Favorite ──────────────────────────────────────────────────────────
+async function toggleFavorite(id, e) {
+  e.stopPropagation();
+  try {
+    const resp = await fetch(`/api/favorite/${id}`, { method: 'POST' });
+    const data = await resp.json();
+
+    const img = gallery.find(g => g.id === id);
+    if (img?.meta) img.meta.favorite = data.favorite;
+
+    renderGallery();
+  } catch { /* ignore */ }
+}
+
+// ─── Error Toast ───────────────────────────────────────────────────────
+function showError(msg) {
+  const toast = $('#error-toast');
+  toast.textContent = msg;
+  toast.classList.add('visible');
+  setTimeout(() => toast.classList.remove('visible'), 4000);
+}
+
+// ─── Utility ───────────────────────────────────────────────────────────
+function escHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s || '';
+  return d.innerHTML;
+}
+
+// ─── Event Binding ─────────────────────────────────────────────────────
+function bindEvents() {
+  // Genre clicks
+  $('#genre-grid').addEventListener('click', e => {
+    const btn = e.target.closest('.genre-btn');
+    if (btn) selectGenre(btn.dataset.id);
+  });
+
+  // Archetype clicks
+  $('#archetype-grid').addEventListener('click', e => {
+    const btn = e.target.closest('.archetype-btn');
+    if (btn) applyArchetype(btn.dataset.id);
+  });
+
+  // Tag clicks
+  $('#trait-groups').addEventListener('click', e => {
+    const tag = e.target.closest('.tag');
+    if (tag) {
+      selectTag(tag.dataset.trait, tag.dataset.option);
+      return;
+    }
+
+    const clearBtn = e.target.closest('.clear-btn');
+    if (clearBtn) {
+      clearTrait(clearBtn.dataset.trait);
+      return;
+    }
+
+    // Group collapse
+    const header = e.target.closest('.trait-group-header');
+    if (header) {
+      header.closest('.trait-group').classList.toggle('collapsed');
+    }
+  });
+
+  // Custom inputs
+  $('#trait-groups').addEventListener('input', e => {
+    if (e.target.classList.contains('custom-input')) {
+      const key = e.target.dataset.trait;
+      customInputs[key] = e.target.value;
+      updatePromptPreview();
+      updateTraitCount();
+    }
+  });
+
+  // Model select
+  $('#model-select').addEventListener('change', updateQualitySelect);
+
+  // Generate
+  $('#generate-btn').addEventListener('click', generate);
+
+  // Randomize & Clear
+  $('#randomize-btn').addEventListener('click', randomize);
+  $('#clear-btn').addEventListener('click', clearAll);
+
+  // Compare
+  $('#compare-btn').addEventListener('click', toggleCompare);
+  $('#compare-cancel').addEventListener('click', toggleCompare);
+
+  // Gallery clicks
+  $('#gallery-grid').addEventListener('click', e => {
+    const star = e.target.closest('.fav-star');
+    if (star) {
+      toggleFavorite(star.dataset.id, e);
+      return;
+    }
+
+    const card = e.target.closest('.gallery-card');
+    if (!card) return;
+    const idx = parseInt(card.dataset.index);
+
+    if (compareMode) {
+      handleCompareSelect(idx);
+    } else {
+      showImage(idx);
+    }
+  });
+
+  // Gallery double-click for lightbox
+  $('#gallery-grid').addEventListener('dblclick', e => {
+    const card = e.target.closest('.gallery-card');
+    if (card) openLightbox(parseInt(card.dataset.index));
+  });
+
+  // Gallery filters
+  $$('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      $$('.filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      galleryFilter = btn.dataset.filter;
+      renderGallery();
+    });
+  });
+
+  // Prompt input updates preview
+  $('#custom-prompt').addEventListener('input', updatePromptPreview);
+
+  // Prompt preview toggle
+  $('#prompt-preview-toggle').addEventListener('click', () => {
+    $('#prompt-preview').classList.toggle('collapsed');
+  });
+
+  // Lightbox
+  $('#lightbox-close').addEventListener('click', closeLightbox);
+  $('#lightbox-prev').addEventListener('click', () => navLightbox(-1));
+  $('#lightbox-next').addEventListener('click', () => navLightbox(1));
+  $('#lightbox').addEventListener('click', e => {
+    if (e.target === $('#lightbox')) closeLightbox();
+  });
+
+  // Center image click for lightbox
+  $('#image-container').addEventListener('click', e => {
+    if (e.target.tagName === 'IMG' && currentImage) {
+      openLightbox(gallery.indexOf(currentImage));
+    }
+  });
+
+  // Keyboard shortcuts
+  document.addEventListener('keydown', e => {
+    // Don't trigger shortcuts when typing in inputs
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+
+    if (e.key === 'r' || e.key === 'R') {
+      e.preventDefault();
+      randomize();
+    } else if (e.key === 'g' || e.key === 'G') {
+      e.preventDefault();
+      generate();
+    } else if (e.key === 'Escape') {
+      if ($('#lightbox').classList.contains('active')) {
+        closeLightbox();
+      } else if (compareMode) {
+        toggleCompare();
+      }
+    } else if (e.key === 'ArrowLeft' && $('#lightbox').classList.contains('active')) {
+      navLightbox(-1);
+    } else if (e.key === 'ArrowRight' && $('#lightbox').classList.contains('active')) {
+      navLightbox(1);
+    }
+  });
+}
+
+// ─── Start ─────────────────────────────────────────────────────────────
+init().catch(err => {
+  console.error('Init failed:', err);
+  showError('Failed to load app: ' + err.message);
+});
+</script>
+</body>
+</html>

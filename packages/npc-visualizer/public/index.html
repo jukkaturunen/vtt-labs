@@ -81,19 +81,22 @@
     .cat-row select:focus { outline: none; border-color: #c9a84c; }
     .cat-row select:hover { border-color: #3a3a43; }
 
-    /* Fragment preview */
-    .fragment-preview {
+    /* Fragment input (editable prompt piece below each dropdown) */
+    .fragment-input {
+      width: 100%;
       font-size: 11px;
-      color: #5e5b53;
+      color: #e8e4da;
       margin-top: 4px;
-      padding: 4px 8px;
+      padding: 5px 8px;
       background: #111114;
+      border: 1px solid #1e1e24;
       border-radius: 3px;
+      font-family: inherit;
       font-style: italic;
       line-height: 1.4;
-      display: none;
     }
-    .fragment-preview.visible { display: block; }
+    .fragment-input::placeholder { color: #3a3a43; font-style: italic; }
+    .fragment-input:focus { outline: none; border-color: #c9a84c; }
 
     /* Custom species input */
     .species-custom-input {
@@ -632,10 +635,15 @@
             row.appendChild(speciesCustom);
           }
 
-          // Fragment preview
-          const fragment = document.createElement('div');
-          fragment.className = 'fragment-preview';
+          // Fragment input (editable prompt piece)
+          const fragment = document.createElement('input');
+          fragment.type = 'text';
+          fragment.className = 'fragment-input';
           fragment.id = `fragment-${catKey}`;
+          fragment.placeholder = 'Type here or select from list above';
+          fragment.addEventListener('input', () => {
+            onSelectionChange(catKey);
+          });
           row.appendChild(fragment);
         }
 
@@ -688,17 +696,15 @@
     if (!el) return;
     const selId = currentSelections[catKey];
     if (!selId || selId === 'custom') {
-      el.classList.remove('visible');
-      el.textContent = '';
+      el.value = '';
       return;
     }
     const cat = npcOptions[catKey];
     const opt = cat.options.find(o => o.id === selId);
     if (opt && opt.expansion) {
-      el.textContent = opt.expansion;
-      el.classList.add('visible');
+      el.value = opt.expansion;
     } else {
-      el.classList.remove('visible');
+      el.value = '';
     }
   }
 
@@ -719,18 +725,18 @@
           parts.push(customInputs[catKey].trim());
         }
       } else {
-        const selId = currentSelections[catKey];
-        if (!selId) continue;
-
-        if (catKey === 'species' && selId === 'custom') {
+        if (catKey === 'species' && currentSelections[catKey] === 'custom') {
           if (customInputs['species'] && customInputs['species'].trim()) {
             parts.push(customInputs['species'].trim());
           }
           continue;
         }
 
-        const opt = cat.options.find(o => o.id === selId);
-        if (opt && opt.expansion) parts.push(opt.expansion);
+        // Read directly from the fragment input (user may have edited it)
+        const fragmentEl = document.getElementById(`fragment-${catKey}`);
+        if (fragmentEl && fragmentEl.value.trim()) {
+          parts.push(fragmentEl.value.trim());
+        }
       }
     }
     return parts.join(', ');

@@ -10,6 +10,7 @@
     "chat": "npm run dev -w packages/audio-chat",
     "scene": "npm run dev -w packages/scene-visualizer",
     "dice": "npm run dev -w packages/dice-tray",
-    "npc": "npm run dev -w packages/npc-visualizer"
+    "npc": "npm run dev -w packages/npc-visualizer",
+    "forge": "npm run dev -w packages/npc-forge"
   }
 }

@@ -17,6 +17,7 @@ npm run chat     # :3003 — Audio Chat (Daily.co)
 npm run scene    # :3004 — Scene Visualizer (OpenAI)
 npm run dice     # :3005 — Dice Tray
 npm run npc      # :3006 — NPC Visualizer (OpenAI/xAI/Gemini)
+npm run forge    # :3007 — NPC Forge (OpenAI/xAI/Gemini)
 ```
 
 ## API Keys Required
@@ -40,6 +41,11 @@ GOOGLE_API_KEY=your-key
 EOF
 ```
 
+**NPC Forge** — Same API keys as NPC Visualizer
+```bash
+cp packages/npc-visualizer/.env packages/npc-forge/.env
+```
+
 ## Apps
 
 | App | Port | External Deps | Description |
@@ -50,6 +56,7 @@ EOF
 | Scene Visualizer | 3004 | OpenAI API | Pick a visual style, describe a scene, generate with AI |
 | Dice Tray | 3005 | None | 3D dice roller — all standard RPG dice, roll history, customizable surface/color |
 | NPC Visualizer | 3006 | OpenAI / xAI / Gemini API | Pick character traits across 7 groups, describe your NPC, generate portrait with AI |
+| NPC Forge | 3007 | OpenAI / xAI / Gemini API | Tag-based character builder with archetypes, smart randomizer, card export, compare mode |
 
 ## Adding Themes
 
