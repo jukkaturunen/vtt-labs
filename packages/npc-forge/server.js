@@ -964,11 +964,9 @@ app.post('/api/generate', async (req, res) => {
 
       if (trait.type === 'single') {
         const selectedId = selections?.[key];
-        if (!selectedId) continue;
-
         if (customInputs?.[key]) {
           promptParts.push(customInputs[key]);
-        } else {
+        } else if (selectedId) {
           const opt = trait.options.find(o => o.id === selectedId);
           if (opt) promptParts.push(opt.prompt);
         }

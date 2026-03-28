@@ -181,6 +181,49 @@ select:focus { border-color: var(--gold-dim); }
   font-weight: 600;
 }
 
+/* Mode toggle segmented control */
+.mode-toggle {
+  display: flex;
+  margin-left: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.mode-toggle button {
+  padding: 3px 10px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background: transparent;
+  color: var(--text-muted);
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.mode-toggle button:hover { color: var(--text-dim); background: var(--bg-hover); }
+.mode-toggle button.active { background: var(--gold-glow); color: var(--gold); }
+
+/* Quick traits section */
+.quick-traits-section {
+  padding: 8px 14px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.quick-traits-section h3 {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--gold);
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+/* Mode visibility */
+.trait-panel.mode-quick #trait-groups { display: none; }
+.trait-panel.mode-quick #quick-traits { display: block; }
+.trait-panel.mode-detailed #trait-groups { display: block; }
+.trait-panel.mode-detailed #quick-traits { display: none; }
+
 .trait-scroll {
   flex: 1;
   overflow-y: auto;
@@ -895,9 +938,13 @@ select:focus { border-color: var(--gold-dim); }
 
   <div class="main-content">
     <!-- Left: Trait Builder -->
-    <div class="trait-panel">
+    <div class="trait-panel mode-quick">
       <div class="trait-panel-header">
         <h2>Character Traits</h2>
+        <div class="mode-toggle" id="mode-toggle">
+          <button class="active" data-mode="quick">Quick</button>
+          <button data-mode="detailed">Detailed</button>
+        </div>
       </div>
       <div class="trait-scroll" id="trait-scroll">
         <!-- Genre selector -->
@@ -911,7 +958,9 @@ select:focus { border-color: var(--gold-dim); }
           <h3>Quick Start — Archetypes</h3>
           <div class="archetype-grid" id="archetype-grid"></div>
         </div>
-        <!-- Trait groups rendered by JS -->
+        <!-- Quick mode: Gender + Age only -->
+        <div id="quick-traits"></div>
+        <!-- Trait groups rendered by JS (Detailed mode) -->
         <div id="trait-groups"></div>
       </div>
     </div>
@@ -1027,6 +1076,8 @@ let compareImages = [];
 let galleryFilter = 'all';
 let generating = false;
 let selectedGenre = null;  // current genre filter
+let creationMode = 'quick';      // 'quick' | 'detailed'
+let selectedArchetype = null;     // archetype ID or null
 
 // ─── Init ──────────────────────────────────────────────────────────────
 async function init() {
@@ -1043,6 +1094,7 @@ async function init() {
   renderGenres();
   renderArchetypes();
   renderTraitGroups();
+  renderQuickTraits();
   renderModels();
   renderGallery();
   updatePromptPreview();
@@ -1106,8 +1158,8 @@ function filterByGenre() {
     btn.classList.toggle('genre-hidden', hidden);
   });
 
-  // Filter trait tags
-  $$('.tag').forEach(tag => {
+  // Filter trait tags (only in #trait-groups, not #quick-traits)
+  $$('#trait-groups .tag').forEach(tag => {
     const traitKey = tag.dataset.trait;
     const optId = tag.dataset.option;
     const trait = traitData.traits[traitKey];
@@ -1195,7 +1247,7 @@ function renderTraitCategory(key, trait) {
 
   let customHtml = '';
   if (trait.allowCustom) {
-    const placeholder = isMulti ? 'Add custom...' : 'Custom species...';
+    const placeholder = 'Add custom...';
     customHtml = `<div class="custom-input-row">
       <input type="text" class="custom-input" data-trait="${key}"
         placeholder="${placeholder}">
@@ -1210,6 +1262,17 @@ function renderTraitCategory(key, trait) {
     <div class="tag-row">${tagsHtml}</div>
     ${customHtml}
   </div>`;
+}
+
+function renderQuickTraits() {
+  const container = $('#quick-traits');
+  let html = '<div class="quick-traits-section"><h3>Character Basics</h3>';
+  for (const key of ['gender', 'age']) {
+    const trait = traitData.traits[key];
+    if (trait) html += renderTraitCategory(key, trait);
+  }
+  html += '</div>';
+  container.innerHTML = html;
 }
 
 // ─── Render Models ─────────────────────────────────────────────────────
@@ -1320,6 +1383,7 @@ function clearAll() {
   selections = {};
   customInputs = {};
   selectedGenre = null;
+  selectedArchetype = null;
   $$('.custom-input').forEach(inp => inp.value = '');
   $$('.archetype-btn').forEach(b => b.classList.remove('active'));
   $$('.genre-btn').forEach(b => b.classList.remove('active'));
@@ -1346,8 +1410,9 @@ function updateTagUI() {
 }
 
 function updateTraitCount() {
+  const effective = getEffectiveSelections();
   let count = 0;
-  for (const [key, val] of Object.entries(selections)) {
+  for (const [key, val] of Object.entries(effective)) {
     if (Array.isArray(val)) count += val.length;
     else count++;
   }
@@ -1369,10 +1434,13 @@ function applyArchetype(archetypeId) {
   $$('.archetype-btn').forEach(b => b.classList.remove('active'));
 
   if (wasActive) {
-    // Just deselect, don't clear
+    selectedArchetype = null;
+    updatePromptPreview();
+    updateTraitCount();
     return;
   }
 
+  selectedArchetype = archetypeId;
   btn?.classList.add('active');
 
   // Switch genre to match archetype if different
@@ -1384,7 +1452,15 @@ function applyArchetype(archetypeId) {
     filterByGenre();
   }
 
-  // Apply defaults (don't clear unrelated selections)
+  // In Quick mode, don't write defaults into selections — getEffectiveSelections() handles it
+  if (creationMode === 'quick') {
+    updateTagUI();
+    updatePromptPreview();
+    updateTraitCount();
+    return;
+  }
+
+  // Detailed mode: apply defaults (don't clear unrelated selections)
   for (const [key, val] of Object.entries(arch.defaults)) {
     if (Array.isArray(val)) {
       selections[key] = [...val];
@@ -1400,16 +1476,57 @@ function applyArchetype(archetypeId) {
 
 // ─── Randomize ─────────────────────────────────────────────────────────
 function randomize() {
+  if (creationMode === 'quick') {
+    randomizeQuick();
+  } else {
+    randomizeDetailed();
+  }
+}
+
+function randomizeQuick() {
+  // Pick a random genre
+  const genre = traitData.genres[Math.floor(Math.random() * traitData.genres.length)];
+  selectGenre(genre.id);
+
+  // Pick a random archetype for that genre
+  const genreArchetypes = traitData.archetypes.filter(a => a.genre === genre.id);
+  $$('.archetype-btn').forEach(b => b.classList.remove('active'));
+  if (genreArchetypes.length > 0) {
+    const arch = genreArchetypes[Math.floor(Math.random() * genreArchetypes.length)];
+    selectedArchetype = arch.id;
+    const btn = document.querySelector(`.archetype-btn[data-id="${arch.id}"]`);
+    if (btn) btn.classList.add('active');
+  }
+
+  // Only set gender and age (the visible Quick fields)
+  selections = {};
+  const genderOpts = traitData.traits.gender?.options || [];
+  if (genderOpts.length) {
+    selections.gender = genderOpts[Math.floor(Math.random() * genderOpts.length)].id;
+  }
+  const ageOpts = traitData.traits.age?.options || [];
+  if (ageOpts.length) {
+    selections.age = ageOpts[Math.floor(Math.random() * ageOpts.length)].id;
+  }
+
+  customInputs = {};
+  $$('.custom-input').forEach(inp => inp.value = '');
+
+  updateTagUI();
+  updatePromptPreview();
+  updateTraitCount();
+}
+
+function randomizeDetailed() {
   // Filter archetypes by current genre, or use all if no genre
   let availableArchetypes = traitData.archetypes;
   if (selectedGenre) {
     availableArchetypes = availableArchetypes.filter(a => a.genre === selectedGenre);
   }
-  // If no archetypes for this genre (shouldn't happen), fall back to all
   if (availableArchetypes.length === 0) availableArchetypes = traitData.archetypes;
 
-  // Pick a random archetype for coherence
   const arch = availableArchetypes[Math.floor(Math.random() * availableArchetypes.length)];
+  selectedArchetype = arch.id;
 
   // Switch genre to match if needed
   if (arch.genre && arch.genre !== selectedGenre) {
@@ -1434,7 +1551,6 @@ function randomize() {
     const trait = traitData.traits[key];
     if (!trait) continue;
 
-    // Filter options to genre-compatible ones
     const visibleOpts = trait.options.filter(o =>
       !o.genres || !selectedGenre || o.genres.includes(selectedGenre)
     );
@@ -1467,6 +1583,25 @@ function randomize() {
   updateTraitCount();
 }
 
+// ─── Effective Selections (merges archetype defaults for unset traits) ─
+function getEffectiveSelections() {
+  const effective = {};
+  for (const [key, val] of Object.entries(selections)) {
+    effective[key] = Array.isArray(val) ? [...val] : val;
+  }
+  if (selectedArchetype) {
+    const arch = traitData.archetypes.find(a => a.id === selectedArchetype);
+    if (arch?.defaults) {
+      for (const [key, val] of Object.entries(arch.defaults)) {
+        if (effective[key] === undefined) {
+          effective[key] = Array.isArray(val) ? [...val] : val;
+        }
+      }
+    }
+  }
+  return effective;
+}
+
 // ─── Prompt Building ───────────────────────────────────────────────────
 function buildPromptParts() {
   const parts = ['1 person, solo, single subject, alone'];
@@ -1477,22 +1612,22 @@ function buildPromptParts() {
     if (genre) parts.push(genre.promptPrefix);
   }
 
+  const effective = getEffectiveSelections();
+
   for (const key of traitData.order) {
     const trait = traitData.traits[key];
     if (!trait) continue;
 
     if (trait.type === 'single') {
-      const selectedId = selections[key];
-      if (!selectedId) continue;
-
+      const selectedId = effective[key];
       if (customInputs[key]?.trim()) {
         parts.push(customInputs[key].trim());
-      } else {
+      } else if (selectedId) {
         const opt = trait.options.find(o => o.id === selectedId);
         if (opt) parts.push(opt.prompt);
       }
     } else if (trait.type === 'multi') {
-      const ids = selections[key] || [];
+      const ids = effective[key] || [];
       for (const id of ids) {
         const opt = trait.options.find(o => o.id === id);
         if (opt) parts.push(opt.prompt);
@@ -1527,12 +1662,14 @@ async function generate() {
 
   try {
     const body = {
-      selections: { ...selections },
+      selections: getEffectiveSelections(),
       customInputs: { ...customInputs },
       customPrompt: $('#custom-prompt').value.trim(),
       model,
       quality: $('#quality-select').value || undefined,
-      genre: selectedGenre || undefined
+      genre: selectedGenre || undefined,
+      archetype: selectedArchetype || undefined,
+      creationMode
     };
 
     const resp = await fetch('/api/generate', {
@@ -1608,6 +1745,14 @@ function restoreFromMeta(meta) {
   const genre = traitData.genres.find(g => g.id === selectedGenre);
   $('#genre-desc').textContent = genre ? genre.description : '';
   filterByGenre();
+
+  // Restore archetype
+  selectedArchetype = meta.archetype || null;
+  $$('.archetype-btn').forEach(b => b.classList.remove('active'));
+  if (selectedArchetype) {
+    const archBtn = document.querySelector(`.archetype-btn[data-id="${selectedArchetype}"]`);
+    if (archBtn) archBtn.classList.add('active');
+  }
 
   // Restore prompt textarea
   $('#custom-prompt').value = meta.customPrompt || '';
@@ -1983,6 +2128,49 @@ function escHtml(s) {
 
 // ─── Event Binding ─────────────────────────────────────────────────────
 function bindEvents() {
+  // Mode toggle
+  $('#mode-toggle').addEventListener('click', e => {
+    const btn = e.target.closest('button');
+    if (!btn || btn.classList.contains('active')) return;
+
+    creationMode = btn.dataset.mode;
+    $$('#mode-toggle button').forEach(b => b.classList.toggle('active', b.dataset.mode === creationMode));
+
+    const panel = document.querySelector('.trait-panel');
+    panel.classList.toggle('mode-quick', creationMode === 'quick');
+    panel.classList.toggle('mode-detailed', creationMode === 'detailed');
+
+    // When switching to Detailed with an archetype, expand defaults into selections
+    if (creationMode === 'detailed' && selectedArchetype) {
+      const arch = traitData.archetypes.find(a => a.id === selectedArchetype);
+      if (arch?.defaults) {
+        for (const [key, val] of Object.entries(arch.defaults)) {
+          if (selections[key] === undefined) {
+            selections[key] = Array.isArray(val) ? [...val] : val;
+          }
+        }
+      }
+    }
+
+    updateTagUI();
+    updatePromptPreview();
+    updateTraitCount();
+  });
+
+  // Quick traits — tag clicks and clear buttons
+  $('#quick-traits').addEventListener('click', e => {
+    const tag = e.target.closest('.tag');
+    if (tag) {
+      selectTag(tag.dataset.trait, tag.dataset.option);
+      return;
+    }
+    const clearBtn = e.target.closest('.clear-btn');
+    if (clearBtn) {
+      clearTrait(clearBtn.dataset.trait);
+      return;
+    }
+  });
+
   // Genre clicks
   $('#genre-grid').addEventListener('click', e => {
     const btn = e.target.closest('.genre-btn');

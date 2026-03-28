@@ -4,4 +4,5 @@ docs/
 packages/*/uploads/
 packages/*/generated/
 packages/*/*.md
+memory/
 
