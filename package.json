@@ -11,6 +11,7 @@
     "scene": "npm run dev -w packages/scene-visualizer",
     "dice": "npm run dev -w packages/dice-tray",
     "npc": "npm run dev -w packages/npc-visualizer",
-    "forge": "npm run dev -w packages/npc-forge"
+    "forge": "npm run dev -w packages/npc-forge",
+    "episode": "npm run dev -w packages/episode-planner"
   }
 }

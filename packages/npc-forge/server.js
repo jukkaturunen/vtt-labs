@@ -913,6 +913,22 @@ const GROUP_ORDER = [
   'Attire & Gear', 'Expression & Pose', 'Presentation'
 ];
 
+const THEME_MAP = {
+  fantasy: 'Medieval / Fantasy',
+  scifi: 'Sci-Fi / Futuristic',
+  cyberpunk: 'Cyberpunk',
+  horror: 'Horror / Gothic',
+  modern: 'Modern',
+  postapoc: 'Post-Apocalyptic',
+  steampunk: 'Steampunk',
+  western: 'Western / Frontier',
+};
+
+const THEME_ORDER = [
+  'Universal', 'Medieval / Fantasy', 'Sci-Fi / Futuristic', 'Cyberpunk',
+  'Horror / Gothic', 'Modern', 'Post-Apocalyptic', 'Steampunk', 'Western / Frontier'
+];
+
 // ─── API Routes ───────────────────────────────────────────────────────────────
 
 // Get trait definitions
@@ -922,8 +938,20 @@ app.get('/api/traits', (req, res) => {
     order: TRAIT_ORDER,
     groups: GROUP_ORDER,
     archetypes: ARCHETYPES,
-    genres: GENRES
+    genres: GENRES,
+    themeMap: THEME_MAP,
+    themeOrder: THEME_ORDER
   });
+});
+
+// Get available preview images
+const PREVIEWS_DIR = join(__dirname, 'public', 'previews');
+app.get('/api/previews', async (req, res) => {
+  try {
+    if (!existsSync(PREVIEWS_DIR)) return res.json([]);
+    const files = await readdir(PREVIEWS_DIR);
+    res.json(files.filter(f => /\.(jpg|jpeg|png|webp)$/i.test(f)));
+  } catch { res.json([]); }
 });
 
 // Get available models

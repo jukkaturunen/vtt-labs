@@ -19,6 +19,7 @@ Use these short names when referring to apps:
 | **dice app** | Dice Tray | `packages/dice-tray/` | 3005 | `npm run dice` |
 | **npc app** | NPC Visualizer | `packages/npc-visualizer/` | 3006 | `npm run npc` |
 | **forge app** | NPC Forge | `packages/npc-forge/` | 3007 | `npm run forge` |
+| **episode app** | Episode Planner | `packages/episode-planner/` | 3008 | `npm run episode` |
 
 ## Directory Structure
 
@@ -54,10 +55,14 @@ vtt-labs/
 │   │   ├── server.js          # Multi-model image gen proxy (OpenAI/xAI/Gemini), structured NPC trait builder
 │   │   ├── public/index.html  # Character trait picker (7 groups, 20 categories), prompt builder, NPC gallery
 │   │   └── .env               # OPENAI_API_KEY, XAI_API_KEY, GOOGLE_API_KEY go here
-│   └── npc-forge/
+│   ├── npc-forge/
 │       ├── server.js          # Multi-model image gen proxy, archetype system, tag-based trait builder
 │       ├── public/index.html  # Tag-based character builder, archetypes, card export, compare mode
-│       └── .env               # OPENAI_API_KEY, XAI_API_KEY, GOOGLE_API_KEY go here
+│   │   └── .env               # OPENAI_API_KEY, XAI_API_KEY, GOOGLE_API_KEY go here
+│   └── episode-planner/
+│       ├── server.js          # Series CRUD, folder/file tree, markdown read/write, multer imports
+│       ├── public/index.html  # Home (series list) + editor view (sidebar tree + EasyMDE)
+│       └── series/            # One subdir per series with real folders/files (gitignored)
 ```
 
 ## Architecture Notes
@@ -120,6 +125,17 @@ vtt-labs/
 - Side-by-side compare mode: select 2 gallery images to compare.
 - Keyboard shortcuts: R (randomize), G (generate), Esc (close lightbox/compare), arrow keys (navigate lightbox).
 - API keys: `OPENAI_API_KEY`, `XAI_API_KEY`, `GOOGLE_API_KEY` — all in `.env`.
+
+### episode app
+- Campaign planning tool. User calls campaigns "series". Two views: home (series list + create) and editor (sidebar tree + markdown editor).
+- Series live as real directories under `packages/episode-planner/series/<slug>/`. Each has a `.series.json` with `{ name, system, created, lastOpened }` and starts with default `background/` and `episode-1/` subfolders.
+- Game system is picked at creation time and is immutable. Allowed IDs: `agnostic`, `dnd5e-2014`, `dnd5e-2024`, `motw` (defined in `SYSTEMS` in `server.js`, exposed via `GET /api/systems`). Currently display-only; future hooks for per-system rules/templates.
+- Display name and on-disk slug are independent — renaming a series only updates the JSON.
+- Markdown editor: EasyMDE via CDN (split preview, toolbar). Cmd/Ctrl+S saves. Binary files (images, PDFs) show a preview/download instead of the editor.
+- Sidebar tree supports nested folders, click-to-open, ✎ rename / ✕ delete buttons on hover. + Folder / + File / Import act on the currently selected folder (or selected file's parent).
+- Imports use multer disk storage; files land directly in the target folder with their original (sanitized) name. 50MB per file.
+- Every API endpoint that takes a `path` runs through `safeJoin()` to reject `..` traversal.
+- No API keys required.
 
 ### dice app
 - Uses `@drdreo/dice-box-threejs` (Three.js + Cannon-ES) loaded from CDN. No npm install needed for the 3D engine.

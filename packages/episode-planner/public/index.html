@@ -1,0 +1,702 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Episode Planner</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://unpkg.com/easymde/dist/easymde.min.css">
+<script src="https://unpkg.com/easymde/dist/easymde.min.js"></script>
+<style>
+  :root {
+    --bg: #1c1d22;
+    --bg-2: #25272e;
+    --bg-3: #2d3038;
+    --border: #383b44;
+    --text: #e6e7eb;
+    --muted: #9aa0ab;
+    --accent: #7a9cff;
+    --accent-2: #5a7fe0;
+    --danger: #d96b6b;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+  }
+  button {
+    background: var(--bg-3);
+    color: var(--text);
+    border: 1px solid var(--border);
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  button:hover { background: #353842; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.primary:hover { background: var(--accent-2); }
+  button.danger { color: var(--danger); }
+  input[type="text"] {
+    background: var(--bg-2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 13px;
+  }
+  input[type="text"]:focus { outline: none; border-color: var(--accent); }
+
+  /* ─── Home view ─── */
+  #home {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 48px 24px;
+  }
+  #home h1 { font-size: 28px; margin: 0 0 24px; }
+  .new-series-row { display: flex; gap: 8px; margin-bottom: 32px; flex-wrap: wrap; }
+  .new-series-row input { flex: 1; min-width: 200px; }
+  .new-series-row select {
+    background: var(--bg-2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 13px;
+  }
+  .system-badge {
+    display: inline-block;
+    background: var(--bg-3);
+    color: var(--muted);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 11px;
+    margin-left: 8px;
+    white-space: nowrap;
+  }
+  .series-list { display: flex; flex-direction: column; gap: 8px; }
+  .series-card {
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+  }
+  .series-card:hover { border-color: var(--accent); }
+  .series-card .name { font-weight: 600; flex: 1; }
+  .series-card .meta { color: var(--muted); font-size: 12px; }
+  .series-card .actions { display: flex; gap: 6px; }
+  .series-card .actions button {
+    padding: 4px 8px;
+    font-size: 12px;
+  }
+  .empty { color: var(--muted); text-align: center; padding: 32px; }
+
+  /* ─── Editor view ─── */
+  #editor-view { display: none; height: 100vh; flex-direction: row; }
+  #editor-view.active { display: flex; }
+  #sidebar {
+    width: 280px;
+    flex-shrink: 0;
+    background: var(--bg-2);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+  }
+  .sb-header {
+    padding: 12px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .sb-header .back { padding: 4px 8px; font-size: 12px; }
+  .sb-header .series-name {
+    flex: 1;
+    font-weight: 600;
+    cursor: pointer;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .sb-toolbar {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    gap: 4px;
+  }
+  .sb-toolbar button { padding: 4px 8px; font-size: 12px; flex: 1; }
+  .tree {
+    flex: 1;
+    overflow: auto;
+    padding: 8px 0;
+  }
+  .tree-node { user-select: none; }
+  .tree-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    cursor: pointer;
+    font-size: 13px;
+    position: relative;
+  }
+  .tree-row:hover { background: var(--bg-3); }
+  .tree-row.selected { background: var(--accent); color: #fff; }
+  .tree-row .twisty { width: 12px; opacity: 0.6; font-size: 10px; }
+  .tree-row .icon { width: 14px; opacity: 0.7; }
+  .tree-row .label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tree-row .row-actions {
+    display: none;
+    gap: 2px;
+  }
+  .tree-row:hover .row-actions { display: flex; }
+  .tree-row .row-actions button {
+    padding: 0 4px;
+    font-size: 11px;
+    background: transparent;
+    border: none;
+    color: inherit;
+    opacity: 0.7;
+  }
+  .tree-row .row-actions button:hover { opacity: 1; }
+  .tree-children { padding-left: 14px; }
+
+  /* ─── Editor pane ─── */
+  #editor-pane {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+  .ed-titlebar {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--bg-2);
+  }
+  .ed-titlebar .path { flex: 1; color: var(--muted); font-size: 12px; font-family: ui-monospace, monospace; }
+  .ed-titlebar .status { font-size: 12px; color: var(--muted); }
+  .ed-titlebar .status.dirty { color: var(--accent); }
+  #editor-area { flex: 1; overflow: auto; }
+  #editor-area .empty-pane {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--muted);
+  }
+  .binary-view {
+    padding: 24px;
+    text-align: center;
+  }
+  .binary-view img {
+    max-width: 100%;
+    max-height: 70vh;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+  }
+  .binary-view a {
+    color: var(--accent);
+    text-decoration: none;
+  }
+
+  /* EasyMDE dark tweaks */
+  .EasyMDEContainer { background: var(--bg); }
+  .EasyMDEContainer .CodeMirror {
+    background: var(--bg);
+    color: var(--text);
+    border-color: var(--border);
+    height: calc(100vh - 90px);
+  }
+  .EasyMDEContainer .CodeMirror-cursor { border-color: var(--text); }
+  .editor-toolbar {
+    background: var(--bg-2);
+    border-color: var(--border);
+  }
+  .editor-toolbar button {
+    color: var(--text) !important;
+  }
+  .editor-toolbar button:hover, .editor-toolbar button.active {
+    background: var(--bg-3);
+    border-color: var(--border);
+  }
+  .editor-preview, .editor-preview-side {
+    background: var(--bg-2);
+    color: var(--text);
+  }
+  .editor-statusbar { color: var(--muted); }
+  .CodeMirror-selected { background: #3a4055 !important; }
+</style>
+</head>
+<body>
+
+<div id="home">
+  <h1>Episode Planner</h1>
+  <div class="new-series-row">
+    <input id="new-series-name" type="text" placeholder="New series name…">
+    <select id="new-series-system"></select>
+    <button class="primary" id="new-series-btn">Create</button>
+  </div>
+  <div class="series-list" id="series-list"></div>
+</div>
+
+<div id="editor-view">
+  <div id="sidebar">
+    <div class="sb-header">
+      <button class="back" id="back-btn">← Home</button>
+      <div style="flex:1; min-width:0">
+        <div class="series-name" id="series-name" title="Click to rename">Series</div>
+        <div style="margin-top:2px"><span class="system-badge" id="series-system" style="margin-left:0">—</span></div>
+      </div>
+    </div>
+    <div class="sb-toolbar">
+      <button id="new-folder-btn" title="New folder in selection">+ Folder</button>
+      <button id="new-file-btn" title="New .md file in selection">+ File</button>
+      <button id="import-btn" title="Import files into selection">⤓ Import</button>
+      <input type="file" id="import-input" multiple hidden>
+    </div>
+    <div class="tree" id="tree"></div>
+  </div>
+  <div id="editor-pane">
+    <div class="ed-titlebar">
+      <div class="path" id="current-path">No file open</div>
+      <div class="status" id="status"></div>
+      <button id="save-btn" disabled>Save</button>
+    </div>
+    <div id="editor-area">
+      <div class="empty-pane">Select a file from the sidebar.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const state = {
+  view: 'home',
+  slug: null,
+  seriesName: null,
+  seriesSystem: null,
+  systems: [],
+  tree: [],
+  expanded: new Set(),
+  selectedPath: '',       // currently-selected node in tree (folder or file). '' = root.
+  selectedIsFolder: true,
+  openFile: null,         // { path, ext, type }
+  dirty: false,
+  saving: false,
+  mde: null
+};
+
+// ─── API helpers ───────────────────────────────────────────────────────────
+async function api(method, url, body) {
+  const opts = { method, headers: {} };
+  if (body !== undefined) {
+    opts.headers['Content-Type'] = 'application/json';
+    opts.body = JSON.stringify(body);
+  }
+  const r = await fetch(url, opts);
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data.error || r.statusText);
+  return data;
+}
+
+function systemLabel(id) {
+  return state.systems.find(s => s.id === id)?.label || id || 'System Agnostic';
+}
+
+async function loadSystems() {
+  if (state.systems.length) return;
+  state.systems = await api('GET', '/api/systems');
+  const sel = document.getElementById('new-series-system');
+  sel.innerHTML = '';
+  for (const s of state.systems) {
+    const opt = document.createElement('option');
+    opt.value = s.id;
+    opt.textContent = s.label;
+    sel.appendChild(opt);
+  }
+}
+
+// ─── Home view ─────────────────────────────────────────────────────────────
+async function loadHome() {
+  state.view = 'home';
+  document.getElementById('home').style.display = '';
+  document.getElementById('editor-view').classList.remove('active');
+  await loadSystems();
+  const list = await api('GET', '/api/series');
+  const wrap = document.getElementById('series-list');
+  wrap.innerHTML = '';
+  if (!list.length) {
+    wrap.innerHTML = '<div class="empty">No series yet. Create your first one above.</div>';
+    return;
+  }
+  for (const s of list) {
+    const el = document.createElement('div');
+    el.className = 'series-card';
+    el.innerHTML = `
+      <div style="flex:1; min-width:0">
+        <div><span class="name"></span><span class="system-badge"></span></div>
+        <div class="meta"></div>
+      </div>
+      <div class="actions">
+        <button class="rename">Rename</button>
+        <button class="danger del">Delete</button>
+      </div>`;
+    el.querySelector('.name').textContent = s.name;
+    el.querySelector('.system-badge').textContent = systemLabel(s.system);
+    el.querySelector('.meta').textContent =
+      s.lastOpened ? `Last opened ${new Date(s.lastOpened).toLocaleString()}` : 'Never opened';
+    el.addEventListener('click', (ev) => {
+      if (ev.target.closest('.actions')) return;
+      openSeries(s.slug);
+    });
+    el.querySelector('.rename').addEventListener('click', async (ev) => {
+      ev.stopPropagation();
+      const name = prompt('Rename series', s.name);
+      if (!name || !name.trim()) return;
+      await api('PATCH', `/api/series/${s.slug}`, { name: name.trim() });
+      loadHome();
+    });
+    el.querySelector('.del').addEventListener('click', async (ev) => {
+      ev.stopPropagation();
+      if (!confirm(`Delete series "${s.name}"? This removes all files on disk.`)) return;
+      await api('DELETE', `/api/series/${s.slug}`);
+      loadHome();
+    });
+    wrap.appendChild(el);
+  }
+}
+
+document.getElementById('new-series-btn').addEventListener('click', createSeries);
+document.getElementById('new-series-name').addEventListener('keydown', e => {
+  if (e.key === 'Enter') createSeries();
+});
+
+async function createSeries() {
+  const input = document.getElementById('new-series-name');
+  const name = input.value.trim();
+  if (!name) return;
+  const system = document.getElementById('new-series-system').value || 'agnostic';
+  const r = await api('POST', '/api/series', { name, system });
+  input.value = '';
+  openSeries(r.slug);
+}
+
+// ─── Editor view ───────────────────────────────────────────────────────────
+async function openSeries(slug) {
+  state.slug = slug;
+  state.view = 'editor';
+  state.expanded = new Set();
+  state.selectedPath = '';
+  state.selectedIsFolder = true;
+  state.openFile = null;
+  state.dirty = false;
+  await api('PATCH', `/api/series/${slug}`, { touch: true });
+  document.getElementById('home').style.display = 'none';
+  document.getElementById('editor-view').classList.add('active');
+  showEmptyEditor();
+  await loadTree();
+}
+
+async function loadTree() {
+  const r = await api('GET', `/api/series/${state.slug}/tree`);
+  state.tree = r.tree;
+  state.seriesName = r.name;
+  state.seriesSystem = r.system;
+  document.getElementById('series-name').textContent = r.name;
+  document.getElementById('series-system').textContent = systemLabel(r.system);
+  renderTree();
+}
+
+function renderTree() {
+  const wrap = document.getElementById('tree');
+  wrap.innerHTML = '';
+  wrap.appendChild(renderNodes(state.tree));
+}
+
+function renderNodes(nodes) {
+  const frag = document.createDocumentFragment();
+  for (const node of nodes) frag.appendChild(renderNode(node));
+  return frag;
+}
+
+function renderNode(node) {
+  const wrap = document.createElement('div');
+  wrap.className = 'tree-node';
+  const row = document.createElement('div');
+  row.className = 'tree-row';
+  if (node.path === state.selectedPath) row.classList.add('selected');
+
+  const isFolder = node.type === 'folder';
+  const expanded = state.expanded.has(node.path);
+
+  const twisty = document.createElement('span');
+  twisty.className = 'twisty';
+  twisty.textContent = isFolder ? (expanded ? '▾' : '▸') : '';
+  row.appendChild(twisty);
+
+  const icon = document.createElement('span');
+  icon.className = 'icon';
+  icon.textContent = isFolder ? '📁' : (node.text ? '📄' : '📎');
+  row.appendChild(icon);
+
+  const label = document.createElement('span');
+  label.className = 'label';
+  label.textContent = node.name;
+  row.appendChild(label);
+
+  const actions = document.createElement('span');
+  actions.className = 'row-actions';
+  const rn = document.createElement('button');
+  rn.textContent = '✎';
+  rn.title = 'Rename';
+  rn.addEventListener('click', (e) => { e.stopPropagation(); renameNode(node); });
+  const del = document.createElement('button');
+  del.textContent = '✕';
+  del.title = 'Delete';
+  del.addEventListener('click', (e) => { e.stopPropagation(); deleteNode(node); });
+  actions.appendChild(rn);
+  actions.appendChild(del);
+  row.appendChild(actions);
+
+  row.addEventListener('click', () => {
+    state.selectedPath = node.path;
+    state.selectedIsFolder = isFolder;
+    if (isFolder) {
+      if (expanded) state.expanded.delete(node.path);
+      else state.expanded.add(node.path);
+      renderTree();
+    } else {
+      renderTree();
+      openFile(node);
+    }
+  });
+  wrap.appendChild(row);
+
+  if (isFolder && expanded && node.children?.length) {
+    const ch = document.createElement('div');
+    ch.className = 'tree-children';
+    ch.appendChild(renderNodes(node.children));
+    wrap.appendChild(ch);
+  }
+  return wrap;
+}
+
+function selectionFolderPath() {
+  // Folder to operate on for "+ Folder", "+ File", "Import".
+  if (!state.selectedPath) return '';
+  if (state.selectedIsFolder) return state.selectedPath;
+  // file selected → use its parent
+  const idx = state.selectedPath.lastIndexOf('/');
+  return idx === -1 ? '' : state.selectedPath.slice(0, idx);
+}
+
+document.getElementById('back-btn').addEventListener('click', async () => {
+  if (state.dirty && !confirm('Discard unsaved changes?')) return;
+  destroyEditor();
+  await loadHome();
+});
+
+document.getElementById('series-name').addEventListener('click', async () => {
+  const name = prompt('Rename series', state.seriesName);
+  if (!name || !name.trim()) return;
+  await api('PATCH', `/api/series/${state.slug}`, { name: name.trim() });
+  state.seriesName = name.trim();
+  document.getElementById('series-name').textContent = state.seriesName;
+});
+
+document.getElementById('new-folder-btn').addEventListener('click', async () => {
+  const name = prompt('New folder name');
+  if (!name || !name.trim()) return;
+  await api('POST', `/api/series/${state.slug}/folder`, {
+    path: selectionFolderPath(),
+    name: name.trim()
+  });
+  state.expanded.add(selectionFolderPath());
+  await loadTree();
+});
+
+document.getElementById('new-file-btn').addEventListener('click', async () => {
+  const name = prompt('New file name (.md added if no extension)');
+  if (!name || !name.trim()) return;
+  const r = await api('POST', `/api/series/${state.slug}/new-file`, {
+    path: selectionFolderPath(),
+    name: name.trim()
+  });
+  state.expanded.add(selectionFolderPath());
+  await loadTree();
+  const node = findNode(state.tree, r.path);
+  if (node) {
+    state.selectedPath = node.path;
+    state.selectedIsFolder = false;
+    renderTree();
+    openFile(node);
+  }
+});
+
+document.getElementById('import-btn').addEventListener('click', () => {
+  document.getElementById('import-input').click();
+});
+
+document.getElementById('import-input').addEventListener('change', async (e) => {
+  const files = e.target.files;
+  if (!files?.length) return;
+  const fd = new FormData();
+  for (const f of files) fd.append('files', f);
+  const folder = selectionFolderPath();
+  const r = await fetch(
+    `/api/series/${state.slug}/import?path=${encodeURIComponent(folder)}`,
+    { method: 'POST', body: fd }
+  );
+  if (!r.ok) {
+    const err = await r.json().catch(() => ({}));
+    alert('Import failed: ' + (err.error || r.statusText));
+  }
+  e.target.value = '';
+  state.expanded.add(folder);
+  await loadTree();
+});
+
+function findNode(nodes, path) {
+  for (const n of nodes) {
+    if (n.path === path) return n;
+    if (n.children) {
+      const f = findNode(n.children, path);
+      if (f) return f;
+    }
+  }
+  return null;
+}
+
+async function renameNode(node) {
+  const newName = prompt('Rename to', node.name);
+  if (!newName || !newName.trim() || newName === node.name) return;
+  await api('PATCH', `/api/series/${state.slug}/rename`, {
+    path: node.path,
+    newName: newName.trim()
+  });
+  if (state.openFile?.path === node.path) destroyEditor();
+  await loadTree();
+}
+
+async function deleteNode(node) {
+  if (!confirm(`Delete "${node.name}"?`)) return;
+  await api('DELETE', `/api/series/${state.slug}/entry?path=${encodeURIComponent(node.path)}`);
+  if (state.openFile?.path === node.path) destroyEditor();
+  await loadTree();
+}
+
+// ─── File editor ───────────────────────────────────────────────────────────
+function destroyEditor() {
+  if (state.mde) {
+    state.mde.toTextArea();
+    state.mde = null;
+  }
+  state.openFile = null;
+  state.dirty = false;
+  showEmptyEditor();
+  updateStatus();
+}
+
+function showEmptyEditor() {
+  const area = document.getElementById('editor-area');
+  area.innerHTML = '<div class="empty-pane">Select a file from the sidebar.</div>';
+  document.getElementById('current-path').textContent = 'No file open';
+  document.getElementById('save-btn').disabled = true;
+}
+
+async function openFile(node) {
+  if (state.dirty && !confirm('Discard unsaved changes in current file?')) return;
+  if (state.mde) { state.mde.toTextArea(); state.mde = null; }
+  const r = await api('GET', `/api/series/${state.slug}/file?path=${encodeURIComponent(node.path)}`);
+  state.openFile = { path: node.path, ext: r.ext, type: r.type };
+  state.dirty = false;
+  document.getElementById('current-path').textContent = node.path;
+
+  const area = document.getElementById('editor-area');
+  area.innerHTML = '';
+
+  if (r.type === 'text') {
+    const ta = document.createElement('textarea');
+    area.appendChild(ta);
+    state.mde = new EasyMDE({
+      element: ta,
+      initialValue: r.content,
+      autoDownloadFontAwesome: true,
+      spellChecker: false,
+      status: ['lines', 'words'],
+      toolbar: ['bold', 'italic', 'heading', '|', 'quote', 'unordered-list', 'ordered-list',
+                '|', 'link', 'image', 'table', '|', 'preview', 'side-by-side', 'fullscreen']
+    });
+    state.mde.codemirror.on('change', () => {
+      if (!state.dirty) {
+        state.dirty = true;
+        updateStatus();
+      }
+    });
+    document.getElementById('save-btn').disabled = false;
+  } else {
+    document.getElementById('save-btn').disabled = true;
+    const v = document.createElement('div');
+    v.className = 'binary-view';
+    const isImage = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg'].includes(r.ext);
+    if (isImage) {
+      v.innerHTML = `<img src="${r.url}" alt=""><div style="margin-top:12px"><a href="${r.url}" download>Download</a></div>`;
+    } else {
+      v.innerHTML = `<p>Binary file (${r.ext || 'unknown'}).</p><a href="${r.url}" download>Download ${node.name}</a>`;
+    }
+    area.appendChild(v);
+  }
+  updateStatus();
+}
+
+async function saveFile() {
+  if (!state.openFile || state.openFile.type !== 'text' || !state.mde) return;
+  state.saving = true;
+  updateStatus();
+  try {
+    await api('PUT', `/api/series/${state.slug}/file?path=${encodeURIComponent(state.openFile.path)}`,
+      { content: state.mde.value() });
+    state.dirty = false;
+  } catch (err) {
+    alert('Save failed: ' + err.message);
+  } finally {
+    state.saving = false;
+    updateStatus();
+  }
+}
+
+function updateStatus() {
+  const el = document.getElementById('status');
+  if (state.saving) { el.textContent = 'Saving…'; el.className = 'status'; }
+  else if (state.dirty) { el.textContent = '● Unsaved'; el.className = 'status dirty'; }
+  else if (state.openFile) { el.textContent = 'Saved'; el.className = 'status'; }
+  else { el.textContent = ''; el.className = 'status'; }
+}
+
+document.getElementById('save-btn').addEventListener('click', saveFile);
+document.addEventListener('keydown', (e) => {
+  if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+    e.preventDefault();
+    saveFile();
+  }
+});
+
+window.addEventListener('beforeunload', (e) => {
+  if (state.dirty) { e.preventDefault(); e.returnValue = ''; }
+});
+
+// ─── Init ──────────────────────────────────────────────────────────────────
+loadHome();
+</script>
+
+</body>
+</html>

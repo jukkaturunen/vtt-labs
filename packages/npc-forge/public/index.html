@@ -223,6 +223,8 @@ select:focus { border-color: var(--gold-dim); }
 .trait-panel.mode-quick #quick-traits { display: block; }
 .trait-panel.mode-detailed #trait-groups { display: block; }
 .trait-panel.mode-detailed #quick-traits { display: none; }
+.trait-panel.mode-detailed .genre-section { display: none; }
+.trait-panel.mode-detailed .archetype-section { display: none; }
 
 .trait-scroll {
   flex: 1;
@@ -314,6 +316,56 @@ select:focus { border-color: var(--gold-dim); }
 /* Hidden tags (filtered out by genre) */
 .tag.genre-hidden { display: none; }
 .archetype-btn.genre-hidden { display: none; }
+
+/* Theme section headers within trait categories */
+.theme-section { margin-bottom: 4px; }
+.theme-label {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  margin: 6px 0 2px;
+  padding-left: 2px;
+  font-weight: 500;
+  opacity: 0.7;
+}
+.theme-section:first-child .theme-label { margin-top: 0; }
+
+/* Preview tooltip for Presentation traits */
+.preview-tooltip {
+  position: fixed;
+  z-index: 200;
+  pointer-events: none;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  padding: 4px;
+  max-width: 200px;
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+.preview-tooltip.visible { opacity: 1; }
+.preview-tooltip img {
+  width: 180px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 4px;
+  display: block;
+}
+.preview-tooltip .preview-label {
+  font-size: 10px;
+  color: var(--text-dim);
+  text-align: center;
+  padding: 4px 2px 2px;
+}
+.preview-tooltip .preview-text {
+  padding: 8px 10px;
+  font-size: 11px;
+  color: var(--text-dim);
+  line-height: 1.4;
+  max-width: 180px;
+}
 
 /* Trait Groups */
 .trait-group {
@@ -1078,18 +1130,21 @@ let generating = false;
 let selectedGenre = null;  // current genre filter
 let creationMode = 'quick';      // 'quick' | 'detailed'
 let selectedArchetype = null;     // archetype ID or null
+let previewSet = new Set();       // set of available preview image filenames
 
 // ─── Init ──────────────────────────────────────────────────────────────
 async function init() {
-  const [traitsResp, modelsResp, galleryResp] = await Promise.all([
+  const [traitsResp, modelsResp, galleryResp, previewsResp] = await Promise.all([
     fetch('/api/traits').then(r => r.json()),
     fetch('/api/models').then(r => r.json()),
-    fetch('/api/gallery').then(r => r.json())
+    fetch('/api/gallery').then(r => r.json()),
+    fetch('/api/previews').then(r => r.json()).catch(() => [])
   ]);
 
   traitData = traitsResp;
   models = modelsResp;
   gallery = galleryResp;
+  previewSet = new Set(previewsResp);
 
   renderGenres();
   renderArchetypes();
@@ -1227,7 +1282,7 @@ function renderTraitGroups() {
 
     for (const key of groupTraits) {
       const trait = traitData.traits[key];
-      html += renderTraitCategory(key, trait);
+      html += renderThemedTraitCategory(key, trait);
     }
 
     html += `</div></div>`;
@@ -1238,11 +1293,12 @@ function renderTraitGroups() {
 
 function renderTraitCategory(key, trait) {
   const isMulti = trait.type === 'multi';
+  const isPresentationGroup = trait.group === 'Presentation';
 
   let tagsHtml = trait.options.map(opt => {
-    const activeClass = isMulti ? 'multi-active' : 'active';
+    const previewAttr = isPresentationGroup ? ` data-preview="${key}-${opt.id}"` : '';
     return `<button class="tag" data-trait="${key}" data-option="${opt.id}"
-      data-type="${trait.type}">${opt.label}</button>`;
+      data-type="${trait.type}"${previewAttr}>${opt.label}</button>`;
   }).join('');
 
   let customHtml = '';
@@ -1260,6 +1316,59 @@ function renderTraitCategory(key, trait) {
       <span class="clear-btn" data-trait="${key}" title="Clear">✕</span>
     </div>
     <div class="tag-row">${tagsHtml}</div>
+    ${customHtml}
+  </div>`;
+}
+
+function renderThemedTraitCategory(key, trait) {
+  // Check if any options have genre tags
+  const hasGenreTags = trait.options.some(o => o.genres && o.genres.length > 0);
+  if (!hasGenreTags) return renderTraitCategory(key, trait);
+
+  const isMulti = trait.type === 'multi';
+  const isPresentationGroup = trait.group === 'Presentation';
+
+  // Group options by theme
+  const themeGroups = {};
+  for (const opt of trait.options) {
+    const theme = opt.genres && opt.genres.length > 0
+      ? (traitData.themeMap[opt.genres[0]] || 'Other')
+      : 'Universal';
+    if (!themeGroups[theme]) themeGroups[theme] = [];
+    themeGroups[theme].push(opt);
+  }
+
+  // Render themed sections
+  let tagsHtml = '';
+  for (const theme of traitData.themeOrder) {
+    const opts = themeGroups[theme];
+    if (!opts || opts.length === 0) continue;
+
+    tagsHtml += `<div class="theme-section">
+      <div class="theme-label">${theme}</div>
+      <div class="tag-row">
+        ${opts.map(opt => {
+          const previewAttr = isPresentationGroup ? ` data-preview="${key}-${opt.id}"` : '';
+          return `<button class="tag" data-trait="${key}" data-option="${opt.id}"
+            data-type="${trait.type}"${previewAttr}>${opt.label}</button>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }
+
+  let customHtml = '';
+  if (trait.allowCustom) {
+    customHtml = `<div class="custom-input-row">
+      <input type="text" class="custom-input" data-trait="${key}" placeholder="Add custom...">
+    </div>`;
+  }
+
+  return `<div class="trait-category" data-key="${key}">
+    <div class="trait-category-label">
+      <span>${trait.label}</span>
+      <span class="clear-btn" data-trait="${key}" title="Clear">✕</span>
+    </div>
+    ${tagsHtml}
     ${customHtml}
   </div>`;
 }
@@ -1518,65 +1627,31 @@ function randomizeQuick() {
 }
 
 function randomizeDetailed() {
-  // Filter archetypes by current genre, or use all if no genre
-  let availableArchetypes = traitData.archetypes;
-  if (selectedGenre) {
-    availableArchetypes = availableArchetypes.filter(a => a.genre === selectedGenre);
-  }
-  if (availableArchetypes.length === 0) availableArchetypes = traitData.archetypes;
-
-  const arch = availableArchetypes[Math.floor(Math.random() * availableArchetypes.length)];
-  selectedArchetype = arch.id;
-
-  // Switch genre to match if needed
-  if (arch.genre && arch.genre !== selectedGenre) {
-    selectedGenre = arch.genre;
-    $$('.genre-btn').forEach(b => b.classList.toggle('active', b.dataset.id === selectedGenre));
-    const genre = traitData.genres.find(g => g.id === selectedGenre);
-    $('#genre-desc').textContent = genre ? genre.description : '';
-    filterByGenre();
-  }
-
-  // Start with archetype defaults
   selections = {};
-  if (arch.defaults) {
-    for (const [key, val] of Object.entries(arch.defaults)) {
-      selections[key] = Array.isArray(val) ? [...val] : val;
-    }
-  }
+  customInputs = {};
+  $$('.custom-input').forEach(inp => inp.value = '');
 
-  // Fill in remaining single-select traits randomly (only from visible options)
+  // Pick from ALL options (no genre filtering in Detailed mode)
   for (const key of traitData.order) {
-    if (selections[key] !== undefined) continue;
     const trait = traitData.traits[key];
     if (!trait) continue;
 
-    const visibleOpts = trait.options.filter(o =>
-      !o.genres || !selectedGenre || o.genres.includes(selectedGenre)
-    );
-    if (visibleOpts.length === 0) continue;
+    const opts = trait.options;
+    if (opts.length === 0) continue;
 
     if (trait.type === 'single') {
       const essential = ['species', 'age', 'gender', 'build', 'expression', 'pose', 'shot', 'art_style', 'lighting', 'background'];
       if (essential.includes(key) || Math.random() > 0.2) {
-        selections[key] = visibleOpts[Math.floor(Math.random() * visibleOpts.length)].id;
+        selections[key] = opts[Math.floor(Math.random() * opts.length)].id;
       }
     } else if (trait.type === 'multi') {
       if (Math.random() > 0.6) {
         const count = Math.floor(Math.random() * 3) + 1;
-        const shuffled = [...visibleOpts].sort(() => Math.random() - 0.5);
+        const shuffled = [...opts].sort(() => Math.random() - 0.5);
         selections[key] = shuffled.slice(0, count).map(o => o.id);
       }
     }
   }
-
-  // Update archetype buttons
-  $$('.archetype-btn').forEach(b => b.classList.remove('active'));
-  const archBtn = document.querySelector(`.archetype-btn[data-id="${arch.id}"]`);
-  if (archBtn) archBtn.classList.add('active');
-
-  customInputs = {};
-  $$('.custom-input').forEach(inp => inp.value = '');
 
   updateTagUI();
   updatePromptPreview();
@@ -1739,19 +1814,23 @@ function restoreFromMeta(meta) {
     }
   }
 
-  // Restore genre (or clear it)
-  selectedGenre = meta.genre || null;
-  $$('.genre-btn').forEach(b => b.classList.toggle('active', b.dataset.id === selectedGenre));
-  const genre = traitData.genres.find(g => g.id === selectedGenre);
-  $('#genre-desc').textContent = genre ? genre.description : '';
-  filterByGenre();
+  // Restore genre/archetype (Quick mode only)
+  if (creationMode === 'quick') {
+    selectedGenre = meta.genre || null;
+    $$('.genre-btn').forEach(b => b.classList.toggle('active', b.dataset.id === selectedGenre));
+    const genre = traitData.genres.find(g => g.id === selectedGenre);
+    $('#genre-desc').textContent = genre ? genre.description : '';
+    filterByGenre();
 
-  // Restore archetype
-  selectedArchetype = meta.archetype || null;
-  $$('.archetype-btn').forEach(b => b.classList.remove('active'));
-  if (selectedArchetype) {
-    const archBtn = document.querySelector(`.archetype-btn[data-id="${selectedArchetype}"]`);
-    if (archBtn) archBtn.classList.add('active');
+    selectedArchetype = meta.archetype || null;
+    $$('.archetype-btn').forEach(b => b.classList.remove('active'));
+    if (selectedArchetype) {
+      const archBtn = document.querySelector(`.archetype-btn[data-id="${selectedArchetype}"]`);
+      if (archBtn) archBtn.classList.add('active');
+    }
+  } else {
+    selectedGenre = null;
+    selectedArchetype = null;
   }
 
   // Restore prompt textarea
@@ -2140,16 +2219,24 @@ function bindEvents() {
     panel.classList.toggle('mode-quick', creationMode === 'quick');
     panel.classList.toggle('mode-detailed', creationMode === 'detailed');
 
-    // When switching to Detailed with an archetype, expand defaults into selections
-    if (creationMode === 'detailed' && selectedArchetype) {
-      const arch = traitData.archetypes.find(a => a.id === selectedArchetype);
-      if (arch?.defaults) {
-        for (const [key, val] of Object.entries(arch.defaults)) {
-          if (selections[key] === undefined) {
-            selections[key] = Array.isArray(val) ? [...val] : val;
+    if (creationMode === 'detailed') {
+      // Expand archetype defaults into selections before clearing archetype
+      if (selectedArchetype) {
+        const arch = traitData.archetypes.find(a => a.id === selectedArchetype);
+        if (arch?.defaults) {
+          for (const [key, val] of Object.entries(arch.defaults)) {
+            if (selections[key] === undefined) {
+              selections[key] = Array.isArray(val) ? [...val] : val;
+            }
           }
         }
       }
+      // Detailed mode doesn't use genre/archetype
+      selectedGenre = null;
+      selectedArchetype = null;
+      $$('.genre-btn').forEach(b => b.classList.remove('active'));
+      $$('.archetype-btn').forEach(b => b.classList.remove('active'));
+      $('#genre-desc').textContent = '';
     }
 
     updateTagUI();
@@ -2212,6 +2299,56 @@ function bindEvents() {
       updatePromptPreview();
       updateTraitCount();
     }
+  });
+
+  // Preview tooltips for Presentation tags
+  const tooltip = $('#preview-tooltip');
+  let tooltipTimer = null;
+
+  $('#trait-groups').addEventListener('mouseover', e => {
+    const tag = e.target.closest('.tag[data-preview]');
+    if (!tag) return;
+
+    clearTimeout(tooltipTimer);
+    tooltipTimer = setTimeout(() => {
+      const traitKey = tag.dataset.trait;
+      const optId = tag.dataset.option;
+      const trait = traitData.traits[traitKey];
+      const opt = trait?.options.find(o => o.id === optId);
+
+      const imgFile = `${tag.dataset.preview}.jpg`;
+      const hasImage = previewSet.has(imgFile);
+
+      if (hasImage) {
+        tooltip.innerHTML = `<img src="/previews/${imgFile}" alt="${opt?.label || ''}">
+          <div class="preview-label">${opt?.label || ''}</div>`;
+      } else {
+        tooltip.innerHTML = `<div class="preview-text">${opt?.prompt || opt?.label || ''}</div>`;
+      }
+
+      const rect = tag.getBoundingClientRect();
+      let left = rect.right + 8;
+      let top = rect.top - 20;
+      const tooltipW = 200;
+      const tooltipH = hasImage ? 160 : 60;
+
+      if (left + tooltipW > window.innerWidth) left = rect.left - tooltipW - 8;
+      if (top + tooltipH > window.innerHeight) top = window.innerHeight - tooltipH - 10;
+      if (top < 10) top = 10;
+
+      tooltip.style.left = left + 'px';
+      tooltip.style.top = top + 'px';
+      tooltip.classList.add('visible');
+    }, 200);
+  });
+
+  $('#trait-groups').addEventListener('mouseout', e => {
+    const tag = e.target.closest('.tag[data-preview]');
+    if (!tag) return;
+    // Only hide if we're leaving the tag (not entering a child)
+    if (tag.contains(e.relatedTarget)) return;
+    clearTimeout(tooltipTimer);
+    tooltip.classList.remove('visible');
   });
 
   // Model select
@@ -2317,5 +2454,6 @@ init().catch(err => {
   showError('Failed to load app: ' + err.message);
 });
 </script>
+<div class="preview-tooltip" id="preview-tooltip"></div>
 </body>
 </html>
